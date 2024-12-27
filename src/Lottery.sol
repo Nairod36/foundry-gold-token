@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.28;
 
 /// @title Lottery
 /// @notice Contrat de loterie utilisant Chainlink VRF
@@ -19,7 +19,6 @@ interface VRFCoordinatorV2Interface {
 }
 
 contract Lottery is Ownable {
-
     // Contrat VRFCoordinator
     VRFCoordinatorV2Interface public vrfCoordinator;
     
@@ -41,6 +40,10 @@ contract Lottery is Ownable {
     event PlayerEntered(address indexed player);
     event WinnerChosen(address indexed winner, uint256 amountWon);
 
+    /**
+     * @dev Le constructeur d’Ownable prend `address initialOwner`.
+     * On fait du déployeur (msg.sender) le propriétaire par défaut.
+     */
     constructor(
         address _vrfCoordinator,
         bytes32 _keyHash,
@@ -48,7 +51,9 @@ contract Lottery is Ownable {
         uint16 _requestConfirmations,
         uint32 _callbackGasLimit,
         address _goldToken
-    ) {
+    )
+        Ownable(msg.sender) // <-- L'adresse du déployeur devient le owner
+    {
         vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
         keyHash = _keyHash;
         subscriptionId = _subscriptionId;
@@ -59,8 +64,8 @@ contract Lottery is Ownable {
 
     /// @notice Permet à un joueur d'entrer dans la loterie
     function enter() external {
-        // On peut définir un coût pour entrer, par exemple 0.01 GLD, etc.
-        // Simplification : pas de coût.
+        // Ex: on peut définir un coût en GLD pour entrer
+        // Simplification : pas de coût dans cet exemple
         players.push(msg.sender);
         emit PlayerEntered(msg.sender);
     }
@@ -77,30 +82,30 @@ contract Lottery is Ownable {
     }
 
     /// @notice Callback du VRFCoordinator
-    /// @dev Cette fonction doit être implémentée selon le VRF utilisé (v2, etc.)
+    /// @dev Implémentation simplifiée (on n'utilise pas VRFConsumerBaseV2)
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal {
         require(!fulfilled[requestId], "Already fulfilled");
         fulfilled[requestId] = true;
 
+        // Calcul du winner
         uint256 randomValue = randomWords[0];
         uint256 winnerIndex = randomValue % players.length;
         address winner = players[winnerIndex];
 
-        // Récupérer les fonds (GLD) du contrat
+        // On envoie tout le solde GLD du contrat au gagnant
         uint256 balance = goldToken.balanceOf(address(this));
         if (balance > 0) {
-            // Envoyer la totalité au gagnant (exemple simpliste)
             goldToken.transfer(winner, balance);
             emit WinnerChosen(winner, balance);
         }
 
-        // Réinitialiser
+        // Reset des joueurs
         delete players;
     }
 
     /**
      * @notice Méthode pour que le VRFCoordinator appelle fulfillRandomWords
-     * @dev Dans la vraie vie, on utilise VRFConsumerBaseV2 qui a déjà un
+     * @dev Dans la vraie vie, on utilise VRFConsumerBaseV2 qui a déjà un 
      * fulfillRandomWords, mais pour l'exemple, on le fait "manuellement".
      */
     function rawFulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.28;
 
 /// @title GoldBridge
 /// @notice Exemple de pont cross-chain via Chainlink CCIP
@@ -27,7 +27,13 @@ contract GoldBridge is Ownable {
     event BridgeSent(uint256 destinationChain, address indexed sender, uint256 amount);
     event BridgeReceived(uint256 sourceChain, address indexed receiver, uint256 amount);
 
-    constructor(address _ccip, address _goldToken) {
+    /**
+     * @dev Le constructeur d'Ownable prend désormais un paramètre 'initialOwner'.
+     * Ici, on met msg.sender comme propriétaire initial.
+     */
+    constructor(address _ccip, address _goldToken)
+        Ownable(msg.sender) // <-- On passe msg.sender à Ownable
+    {
         ccip = IChainlinkCCIP(_ccip);
         goldToken = IERC20(_goldToken);
     }
@@ -65,8 +71,7 @@ contract GoldBridge is Ownable {
         emit BridgeSent(destinationChainId, msg.sender, amount);
     }
 
-    /// @notice Callback pour recevoir GLD depuis un autre réseau
-    /// @dev Cette fonction serait appelée via un mécanisme CCIP
+    /// @notice Callback pour recevoir GLD depuis un autre réseau (via CCIP)
     function ccipReceive(
         uint256 sourceChainId,
         bytes calldata message,
@@ -81,7 +86,7 @@ contract GoldBridge is Ownable {
         require(tokens.length == 1 && tokens[0] == goldToken, "Invalid tokens array");
         
         // On crédite le receiver final qui doit être encodé dans 'message' ou 'sender'
-        // Simplification : on va considérer que 'sender' est l'utilisateur destinataire
+        // Simplification : on considère que 'sender' est le destinataire
         goldToken.transfer(sender, amounts[0]);
 
         emit BridgeReceived(sourceChainId, sender, amounts[0]);

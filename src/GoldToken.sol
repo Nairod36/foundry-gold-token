@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.28;
 
 /// @title GoldToken
-/// @author ...
 /// @notice Un ERC20 indexé sur l'or, avec frais et loterie
 /// @dev Utilise Chainlink Data Feeds XAU/USD et ETH/USD
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -33,10 +32,17 @@ contract GoldToken is ERC20, Ownable {
     event Minted(address indexed minter, uint256 amountInEth, uint256 tokensMinted, uint256 fees);
     event Burned(address indexed burner, uint256 tokensBurned, uint256 fees);
 
+    /**
+     * @dev Constructeur. On transmet `msg.sender` à Ownable pour faire 
+     * du déployeur le propriétaire par défaut.
+     */
     constructor(
         address _priceFeedXAU,
         address _priceFeedETH
-    ) ERC20("Gold Token", "GLD") {
+    )
+        ERC20("Gold Token", "GLD")
+        Ownable(msg.sender) // IMPORTANT : on passe l'argument au constructeur d'Ownable
+    {
         priceFeedXAU = AggregatorV3Interface(_priceFeedXAU);
         priceFeedETH = AggregatorV3Interface(_priceFeedETH);
     }
@@ -69,31 +75,22 @@ contract GoldToken is ERC20, Ownable {
         // 2) Récupérer le prix XAU/USD
         int256 xauPrice = getXAUPrice(); 
 
-        // Conversion : 
-        // Montant d'ETH en USD = msg.value * (ETH/USD)
-        // Montant d'ETH en USD (en solidity) 
-        // Il faut gérer les décimales ; hypothèse: aggregator = 8 decimales => price * 1e10 pour ETH
+        // Montant d'ETH en USD = msg.value * (ETH/USD) / 1e8
         uint256 ethUsd = (msg.value * uint256(ethPrice)) / 1e8;
 
         // Prix 1 once or en USD = xauPrice / 1e8
         // Convertir 1 once en gramme => 31.1035
-        // => Prix 1 gramme = (xauPrice / 1e8) / 31.1035
-        // => Donc nb grammes = (ethUsd / [prix_1_gramme])
-        // Simplification possible dans un smart contract => on fait un ratio
+        // =>  xauPricePerGram = (xauPrice * 1e10) / 311035
+        uint256 xauPricePerGram = (uint256(xauPrice) * 1e10) / 311035;
 
-        // NB : On reste simpliste ici, sans arrondir trop précisément.
-        // xauPrice => 8 dec, on multiplie pour aligner
-        uint256 xauPricePerGram = (uint256(xauPrice) * 1e10) / 311035; 
-        // => 1 gramme = xauPricePerGram / 1e10 USD
-
-        // Nombre de grammes = ethUsd / (xauPricePerGram / 1e10) = (ethUsd * 1e10) / xauPricePerGram
+        // Nombre de grammes = (ethUsd * 1e10) / xauPricePerGram
         uint256 grams = (ethUsd * 1e10) / xauPricePerGram;
 
         // Frais de 5%
-        uint256 fee = (grams * 5) / 100; 
+        uint256 fee = (grams * 5) / 100;
         uint256 mintedTokens = grams - fee;
 
-        // Envoyer les frais accumulés
+        // Ajouter les fees
         totalFees += fee;
 
         // Mint pour l'utilisateur
@@ -102,7 +99,7 @@ contract GoldToken is ERC20, Ownable {
         emit Minted(msg.sender, msg.value, mintedTokens, fee);
     }
 
-    /// @notice Brûler des tokens contre de l'ETH (optionnel, ou vs un stablecoin, etc.)
+    /// @notice Brûler des tokens (ex: rachat d'ETH ou stablecoin non implémenté)
     /// @dev Frais de 5% des tokens brûlés
     function burn(uint256 _amount) external {
         require(balanceOf(msg.sender) >= _amount, "Not enough balance");
@@ -116,13 +113,11 @@ contract GoldToken is ERC20, Ownable {
 
         // Ajout du fee au totalFees
         totalFees += fee;
-        // On brûle aussi la partie fee OU on la stocke pour la loterie
+        // Ici, on retire également les tokens de fees du supply
+        // ou on peut choisir de les transférer au contrat, selon la logique
         _burn(msg.sender, fee);
 
         emit Burned(msg.sender, _amount, fee);
-
-        // Ici, pour renvoyer l'équivalent en ETH, il faudrait gérer des réserves d'ETH dans le contrat
-        // ou une autre logique. Pour l'exemple, on se limite à la destruction des tokens.
     }
 
     /// @notice Transférer les fonds accumulés au contrat de loterie
@@ -130,6 +125,8 @@ contract GoldToken is ERC20, Ownable {
         require(lotteryContract != address(0), "Lottery contract not set");
         uint256 _fees = totalFees;
         totalFees = 0;
+
+        // On transfère les tokens de ce contrat vers la loterie
         _transfer(address(this), lotteryContract, _fees);
     }
 }
