@@ -1,22 +1,66 @@
-# Gold Token Project
+## Foundry
 
-Ce projet implémente :
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-- **Un token ERC20 indexé sur l'or** (via [Chainlink Price Feeds](https://docs.chain.link/data-feeds/price-feeds)).
-- **Un système de loterie** utilisant [Chainlink VRF](https://docs.chain.link/vrf).
-- **Un pont cross-chain** utilisant [Chainlink CCIP](https://docs.chain.link/ccip).
+Foundry consists of:
 
-## Fonctionnalités
+-   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+-   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+-   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+-   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
-1. **Mint** de GLD en échange d'ETH (avec un ratio basé sur XAU/USD et ETH/USD).
-2. **Burn** de GLD (avec 5% de frais).
-3. **Frais** de 5% sur mint et burn, envoyés à la loterie.
-4. **Loterie** décentralisée basée sur Chainlink VRF.
-5. **Bridge** cross-chain pour déplacer les tokens GLD vers la BSC.
+## Documentation
 
-## Installation
+https://book.getfoundry.sh/
 
-```bash
-git clone ...
-cd foundry-gold-token
-forge install
+## Usage
+
+### Build
+
+```shell
+$ forge build
+```
+
+### Test
+
+```shell
+$ forge test
+```
+
+### Format
+
+```shell
+$ forge fmt
+```
+
+### Gas Snapshots
+
+```shell
+$ forge snapshot
+```
+
+### Anvil
+
+```shell
+$ anvil
+```
+
+### Deploy
+
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```
+
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```
