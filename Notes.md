@@ -1,0 +1,2 @@
+- AggregatorV3Interface existe déjà dans la lib Chainlink, aucune utilité à le recréer.
+- Pourquoi 2 prix différents ? Il existe déjà une paire de prix XAU / USD
