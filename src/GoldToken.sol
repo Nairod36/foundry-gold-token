@@ -16,9 +16,18 @@ contract GoldToken is ERC20, Ownable {
         ERC20("GoldEth", "ETGLD")
         Ownable(msg.sender) 
     {
-        // On récupère l'adresse de l'aggregator pour le prix de l'or
         priceFeed = AggregatorV3Interface(0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6);
         priceEthUsdFeed = AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+    }
+
+
+    // Function dedicated to set the price feeds for the contract, usefull for testing
+    function setPriceFeeds(
+        AggregatorV3Interface _goldFeed,
+        AggregatorV3Interface _ethFeed
+    ) external onlyOwner {
+        priceFeed = _goldFeed;
+        priceEthUsdFeed = _ethFeed;
     }
 
     function getGoldPrice(AggregatorV3Interface _priceFeed) public view returns (uint256) {
@@ -31,27 +40,17 @@ contract GoldToken is ERC20, Ownable {
         return uint256(answer);
     }
 
-    function getDecimals(AggregatorV3Interface _priceFeed) public view returns (uint8) {
-        return _priceFeed.decimals();
-    }
-        
-      /**
-     * Returns the latest answer.
-     */
-    function getChainlinkDataFeedLatestAnswer() public view returns (int) {
-        // prettier-ignore
-        (
-            /* uint80 roundID */,
-            int answer,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
-        return answer;
-    }
-
     function mint() public payable {
         require(msg.value > 0, "You need to send some Ether");
-        _mint(msg.sender, msg.value);
+
+        // get prices
+        uint256 goldPrice = getGoldPrice(priceFeed);
+        uint256 ethPrice = getEthPrice(priceEthUsdFeed);
+
+        uint256 usdAmount = (msg.value * ethPrice) / 1e18; // 1e18 is the decimals of ETH
+        uint256 tokenToMint = (usdAmount * 1e18) / goldPrice; // 1e18 is the decimals of the token
+
+        require(tokenToMint > 0, "You need to send more Ether");
+        _mint(msg.sender, tokenToMint);
     }
 }
