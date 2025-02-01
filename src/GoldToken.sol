@@ -6,22 +6,28 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract GoldToken is ERC20, Ownable {
-    AggregatorV3Interface public priceFeed; 
+    AggregatorV3Interface public priceFeed; // XAU/USD Chainlink price feed
+    AggregatorV3Interface public priceEthUsdFeed; // ETH/USD Chainlink price feed
 
     /**
-     * @dev Constructeur. On transmet `msg.sender` à Ownable pour faire 
-     * du déployeur le propriétaire par défaut.
+     * @dev Constructor that gives msg.sender all of existing tokens.
      */
     constructor()
-        ERC20("Gold Token", "GLD")
+        ERC20("GoldEth", "ETGLD")
         Ownable(msg.sender) 
     {
         // On récupère l'adresse de l'aggregator pour le prix de l'or
         priceFeed = AggregatorV3Interface(0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6);
+        priceEthUsdFeed = AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
     }
 
-    function getPrice(AggregatorV3Interface _priceFeed) public view returns (uint256) {
+    function getGoldPrice(AggregatorV3Interface _priceFeed) public view returns (uint256) {
         (, int256 answer, , , ) = _priceFeed.latestRoundData();
+        return uint256(answer);
+    }
+
+    function getEthPrice(AggregatorV3Interface _priceEthUsdFeed) public view returns (uint256) {
+        (, int256 answer, , , ) = _priceEthUsdFeed.latestRoundData();
         return uint256(answer);
     }
 
@@ -42,5 +48,10 @@ contract GoldToken is ERC20, Ownable {
             /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
         return answer;
+    }
+
+    function mint() public payable {
+        require(msg.value > 0, "You need to send some Ether");
+        _mint(msg.sender, msg.value);
     }
 }
