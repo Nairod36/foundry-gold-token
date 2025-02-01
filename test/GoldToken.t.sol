@@ -30,12 +30,12 @@ contract GoldTokenTest is Test {
     }
 
     function testGetPrice() public view {
-        uint256 price = goldToken.getGoldPrice(mockGoldAggregator);
+        uint256 price = goldToken.getGoldPrice();
         assertEq(price, 2000, "Gold Price should be 2000");
     }
 
     function testGetEthPrice() public view {
-        uint256 price = goldToken.getEthPrice(mockEthAggregator);
+        uint256 price = goldToken.getEthPrice();
         assertEq(price, 1500, "ETH Price should be 1000");
     }
 
