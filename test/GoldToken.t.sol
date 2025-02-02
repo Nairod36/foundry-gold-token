@@ -3,14 +3,17 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/GoldToken.sol";
+import "../src/Lottery.sol";
 import { MockAggregator } from "./mock/MockAggregator.t.sol";
 
 contract GoldTokenTest is Test {
     GoldToken goldToken;
+    Lottery lottery;    
     MockAggregator public mockGoldAggregator;
     MockAggregator public mockEthAggregator;
 
     address public  user = address(0x123);
+    address public adminFeeCollector = address(0x456);
 
     function setUp() public {
         // Deploy the contract with some values:
@@ -21,9 +24,15 @@ contract GoldTokenTest is Test {
         mockGoldAggregator = new MockAggregator(2000, block.timestamp, 1, 18);
         mockEthAggregator = new MockAggregator(1500, block.timestamp, 1, 18);
 
-        // Deploy the contract
-        goldToken = new GoldToken();
+        lottery = new Lottery(IERC20(address(0x1))); // adresse dummy
 
+        // Deploy the contract
+        goldToken = new GoldToken(
+            AggregatorV3Interface(address(mockGoldAggregator)),
+            AggregatorV3Interface(address(mockEthAggregator)),
+            ILottery(address(lottery)),
+            adminFeeCollector
+        );
         // Set the price feeds
         vm.prank(goldToken.owner());
         goldToken.setPriceFeeds(mockGoldAggregator, mockEthAggregator);
@@ -37,6 +46,13 @@ contract GoldTokenTest is Test {
     function testGetEthPrice() public view {
         uint256 price = goldToken.getEthPrice();
         assertEq(price, 1500, "ETH Price should be 1000");
+    }
+
+      function testPreviewMint() public view {
+        uint256 ethAmount = 1e18; // 1 ETH
+        uint256 expected = (1e18 * 1500) / 2000; 
+        uint256 preview = goldToken.previewMint(ethAmount);
+        assertEq(preview, expected, "Preview mint amount mismatch");
     }
 
     function testMint() public {
