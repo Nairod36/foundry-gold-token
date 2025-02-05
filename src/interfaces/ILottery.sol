@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 /**
  * @title ILottery
  * @notice Interface du contrat de loterie qui gère la réception de frais et la logique de loterie
