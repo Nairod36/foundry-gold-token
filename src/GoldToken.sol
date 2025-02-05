@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -164,7 +164,7 @@ contract GoldToken is ERC20, Ownable, ReentrancyGuard {
         uint256 refundEth = (netTokens * goldPrice * ETH_DECIMALS) / (TOKEN_DECIMALS * MINT_RATIO * ethPrice);
         require(address(this).balance >= refundEth, "Contract balance insufficient for refund");
 
-        // Répartition des frais : transfert de 50% des tokens de frais à l'admin et 50% à la loterie
+        // Répartition des frais : transfert de 50% des tokens de frais à l'admi  et 50% à la loterie
         uint256 feeForAdmin = feeTokens / 2;
         uint256 feeForLottery = feeTokens - feeForAdmin;
         _transfer(msg.sender, adminFeeCollector, feeForAdmin);
