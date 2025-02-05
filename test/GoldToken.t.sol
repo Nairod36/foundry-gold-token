@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/GoldToken.sol";
@@ -86,8 +86,8 @@ contract GoldTokenTest is Test {
     }
 
     /* ============================
-                 MINT
-       ============================ */
+        MINT
+    ============================ */
 
     function testMint() public {
         uint256 ethSent = 1e18; // 1 ETH
@@ -137,9 +137,8 @@ contract GoldTokenTest is Test {
     }
 
     /* ============================
-         CONSTRUCTOR REVERT TESTS
-       ============================ */
-
+        CONSTRUCTOR REVERT TESTS
+    ============================ */
     function testConstructorRevertInvalidGoldFeed() public {
         vm.expectRevert("Invalid gold feed address");
         new GoldToken(
@@ -181,8 +180,8 @@ contract GoldTokenTest is Test {
     }
 
     /* ============================
-             SET PRICE FEEDS
-       ============================ */
+        SET PRICE FEEDS
+    ============================ */
 
     function testSetPriceFeeds() public {
         MockAggregator newGoldAggregator = new MockAggregator(2500, block.timestamp, 2, 18);
@@ -220,8 +219,8 @@ contract GoldTokenTest is Test {
     }
 
     /* ============================
-                 BURN
-       ============================ */
+        BURN
+    ============================ */
 
     function testBurn() public {
         // 1) L'utilisateur mint des tokens
@@ -321,9 +320,8 @@ contract GoldTokenTest is Test {
     }
 
     /* ============================
-                RECEIVE
-       ============================ */
-
+        RECEIVE
+    ============================ */
     function testReceive() public {
         uint256 amount = 1e18;
         address sender = address(0x789);

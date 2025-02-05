@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.28;
 
 /// @title Lottery
 /// @notice Contrat de loterie utilisant Chainlink VRF
@@ -10,13 +10,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract Lottery is Ownable {
 
     IERC20 public token; 
-
     uint256 public lotteryPool;
-
     address[] public players;
 
     mapping(address => bool) public isParticipant;
-
     event FeeReceived(address indexed from, uint256 amount);
 
     constructor(IERC20 _token) Ownable(msg.sender) {
