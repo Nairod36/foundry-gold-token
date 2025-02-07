@@ -118,7 +118,59 @@ contract GoldBridgeTest is Test {
     }
 
     // 4. Succès de bridgeToBSC (vérification des transferts et de l'événement émis)
+    function testBridgeToBSCSuccess() public {
+    uint256 amount = 100e18;
+    address recipient = address(0xBEEF);
     
+    // Initial balances
+    uint256 initialUserGold = mockGoldToken.balanceOf(user);
+    uint256 initialBridgeGold = mockGoldToken.balanceOf(address(goldBridge));
+    uint256 initialBridgeLink = mockLinkToken.balanceOf(address(goldBridge));
+    uint256 initialRouterLink = mockLinkToken.balanceOf(address(mockRouter));
+    
+    // Approve bridge to spend user's Gold tokens
+    vm.prank(user);
+    mockGoldToken.approve(address(goldBridge), amount);
+    
+    // Approve LINK pour le router directement depuis le bridge
+    // Note: Ceci est nécessaire car le bridge doit approuver le router à dépenser ses LINK
+    vm.prank(address(goldBridge));
+    mockLinkToken.approve(address(mockRouter), FEE);
+    
+    // Execute bridge transfer
+    vm.prank(user);
+    bytes32 messageId = goldBridge.bridgeToBSC(amount, recipient);
+    
+    // Vérifier que l'ID du message correspond à celui stocké dans le mock
+    assertEq(messageId, mockRouter.dummyMessageId(), "Message ID mismatch");
+    
+    // Verify Gold token transfers
+    assertEq(
+        mockGoldToken.balanceOf(user),
+        initialUserGold - amount,
+        "Incorrect user Gold balance after bridge"
+    );
+    assertEq(
+        mockGoldToken.balanceOf(address(goldBridge)),
+        initialBridgeGold + amount,
+        "Incorrect bridge Gold balance after bridge"
+    );
+    
+    // Verify LINK fee transfers
+    assertEq(
+        mockLinkToken.balanceOf(address(goldBridge)),
+        initialBridgeLink - FEE,
+        "Incorrect bridge LINK balance after fee payment"
+    );
+    assertEq(
+        mockLinkToken.balanceOf(address(mockRouter)),
+        initialRouterLink + FEE,
+        "Incorrect router LINK balance after fee payment"
+    );
+    
+    // Verify send count increased
+    assertEq(mockRouter.sendCount(), 1, "Send count should be 1");
+}
 
     // 5. Simuler l'échec de transferFrom dans le token Gold
     function testBridgeToBSCFailTransferFrom() public {
