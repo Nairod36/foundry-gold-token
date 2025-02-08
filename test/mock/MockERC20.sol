@@ -13,17 +13,35 @@ contract MockERC20 is IERC20 {
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    // Variable interne contrôlant le retour de transfer()
+    // Variables internes pour contrôler le comportement des fonctions
     bool internal _transferReturnValue = true;
+    bool internal _approveReturnValue = true;
+    bool internal _transferFromReturnValue = true;
 
-    // Getter automatique (accessible en lecture) : transferReturnValue()
+    // Getters (pour consultation via tests, si besoin)
     function transferReturnValue() public view returns (bool) {
         return _transferReturnValue;
     }
-    
-    // Setter pour modifier le flag depuis les tests
+
+    function approveReturnValue() public view returns (bool) {
+        return _approveReturnValue;
+    }
+
+    function transferFromReturnValue() public view returns (bool) {
+        return _transferFromReturnValue;
+    }
+
+    // Setters pour simuler des échecs dans les fonctions
     function setTransferReturnValue(bool _value) external {
         _transferReturnValue = _value;
+    }
+
+    function setApproveReturnValue(bool _value) external {
+        _approveReturnValue = _value;
+    }
+
+    function setTransferFromReturnValue(bool _value) external {
+        _transferFromReturnValue = _value;
     }
 
     constructor(string memory _name, string memory _symbol, uint8 _decimals) {
@@ -49,6 +67,7 @@ contract MockERC20 is IERC20 {
     }
 
     function approve(address spender, uint256 amount) external override returns (bool) {
+        if (!_approveReturnValue) return false;
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
@@ -60,6 +79,7 @@ contract MockERC20 is IERC20 {
         uint256 amount
     ) external override returns (bool) {
         require(!fail, "Transfer failed");
+        if (!_transferFromReturnValue) return false;
         require(balanceOf[sender] >= amount, "Insufficient balance");
         if (msg.sender != sender) {
             require(allowance[sender][msg.sender] >= amount, "Allowance exceeded");

@@ -10,10 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title GoldBridge
- * @author VotreNom
  * @notice Contrat de pont (bridge) permettant de transférer des tokens Gold entre Ethereum et BSC
  * @dev Implémente Chainlink CCIP pour la messagerie cross-chain sécurisée
- * @custom:security-contact security@votreprojet.com
  */
 contract GoldBridge is CCIPReceiver, Ownable {
     IRouterClient public router;
