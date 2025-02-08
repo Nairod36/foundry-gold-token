@@ -16,15 +16,15 @@ contract MockRouterClient is IRouterClient {
     /// @notice Vérifie si une chaîne est supportée (ici, toute chaîne non nulle est supportée)
     function isChainSupported(
         uint64 destChainSelector
-    ) external view override returns (bool supported) {
+    ) external pure override returns (bool supported) {
         // Pour ce mock, nous considérons que toute valeur non nulle est supportée.
         return destChainSelector != 0;
     }
 
     /// @notice Retourne le fee fixé pour tout message.
     function getFee(
-        uint64 destinationChainSelector,
-        Client.EVM2AnyMessage memory message
+        uint64 /* destinationChainSelector */, /* name */
+        Client.EVM2AnyMessage memory /* message */
     ) external view override returns (uint256) {
         // Ici, nous ignorons destinationChainSelector et message et retournons simplement le fee défini.
         return fee;

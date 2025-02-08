@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 import "../src/GoldToken.sol";
 import "../src/Lottery.sol";
-import { MockAggregator } from "./mock/MockAggregator.t.sol";
+import { MockAggregator } from "./mock/MockAggregator.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -48,17 +48,17 @@ contract GoldTokenTest is Test {
                GETTERS
        ============================ */
 
-    function testGetGoldPrice() public {
+    function testGetGoldPrice() view public {
         uint256 price = goldToken.getGoldPrice();
         assertEq(price, 2000, "Gold price should be 2000");
     }
 
-    function testGetEthPrice() public {
+    function testGetEthPrice() view public {
         uint256 price = goldToken.getEthPrice();
         assertEq(price, 1500, "ETH price should be 1500");
     }
 
-    function testPreviewMint() public {
+    function testPreviewMint() view public {
         uint256 ethAmount = 1e18; // 1 ETH
         // Calcul attendu : usdAmount = (1e18 * 1500)/1e18 = 1500
         // tokenAmount = (1500 * 1e18)/2000 = 0.75e18

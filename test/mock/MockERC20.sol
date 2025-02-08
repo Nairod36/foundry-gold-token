@@ -8,6 +8,7 @@ contract MockERC20 is IERC20 {
     string public symbol;
     uint8 public decimals;
     uint256 public override totalSupply;
+    bool public fail;
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
@@ -38,6 +39,7 @@ contract MockERC20 is IERC20 {
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
+        require(!fail, "Transfer failed");
         if (!_transferReturnValue) return false;
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -57,6 +59,7 @@ contract MockERC20 is IERC20 {
         address recipient,
         uint256 amount
     ) external override returns (bool) {
+        require(!fail, "Transfer failed");
         require(balanceOf[sender] >= amount, "Insufficient balance");
         if (msg.sender != sender) {
             require(allowance[sender][msg.sender] >= amount, "Allowance exceeded");
@@ -66,5 +69,9 @@ contract MockERC20 is IERC20 {
         balanceOf[recipient] += amount;
         emit Transfer(sender, recipient, amount);
         return true;
+    }
+
+    function setFail(bool _fail) external {
+        fail = _fail;
     }
 }

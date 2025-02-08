@@ -6,26 +6,48 @@ pragma solidity 0.8.28;
 /// @dev Simplifié, à adapter à vos besoins
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import './VRF2Consumer.sol';
+import './LotteryPool.sol';
+
 
 contract Lottery is Ownable {
 
+    
     IERC20 public token; 
-    uint256 public lotteryPool;
-    address[] public players;
+    // Le contrat VRF2Consumer, pour demander le tirage aléatoire.
+    VRF2Consumer public vrfConsumer;
+    // Le contrat LotteryPool, qui détient le solde des participations.
+    LotteryPool public lotteryPool;
 
+    address[] public players;
+    uint256[3] public lotteryNumbers;
+    uint256 public lotteryRequestId;
+    bool public lotteryStarted;
+    bool public lotteryEnded;
+    address public winner;
+    
     mapping(address => bool) public isParticipant;
     event FeeReceived(address indexed from, uint256 amount);
+    
 
-    constructor(IERC20 _token) Ownable(msg.sender) {
+    constructor(
+        IERC20 _token
+        // address _vrfConsumer,
+        // address _lotteryPool
+    ) Ownable(msg.sender) {
         require(address(_token) != address(0), "Invalid token address");
+        // require(_vrfConsumer != address(0), "Invalid VRF address");
+        // require(_lotteryPool != address(0), "Invalid lottery pool address");
+
         token = _token;
+        // vrfConsumer = VRF2Consumer(_vrfConsumer);
+        // lotteryPool = LotteryPool(_lotteryPool);
     }
 
     function receiveFee(uint256 feeAmount) external {
         // Seul le contrat de token doit appeler cette fonction.
         // Vous pouvez ajouter une vérification supplémentaire si besoin.
         require(feeAmount > 0, "No fee received");
-        lotteryPool += feeAmount;
         emit FeeReceived(msg.sender, feeAmount);
     }
 
