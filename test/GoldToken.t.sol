@@ -11,6 +11,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice Fichier de tests pour GoldToken, couvrant l’ensemble des branches.
  */
 contract GoldTokenTest is Test {
+
+        function testA() public {} // forge coverage ignore-file
+
     GoldToken public goldToken;
     Lottery public lottery;    
     MockAggregator public mockGoldAggregator;

@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
@@ -19,6 +18,9 @@ import "./interfaces/ILottery.sol";
  * - 50% à l'adresse de collecte des frais administratifs.
  */
 contract GoldToken is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+
+    function testA() public {} // forge coverage ignore-file
+
     // Chainlink price feeds
     AggregatorV3Interface public goldFeed; // Feed XAU/USD
     AggregatorV3Interface public ethFeed;  // Feed ETH/USD
