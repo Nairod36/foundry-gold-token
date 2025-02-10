@@ -34,7 +34,6 @@ contract MockRouterClient is IRouterClient {
 
     /**
      * @notice Checks if a chain is supported.
-     * @param destChainSelector The selector for the destination chain.
      * @return supported True if the chain is supported, otherwise false.
      */
     function isChainSupported(
@@ -46,8 +45,6 @@ contract MockRouterClient is IRouterClient {
 
     /**
      * @notice Returns the fixed fee for any message.
-     * @param destinationChainSelector Selector for the destination chain (ignored in this mock).
-     * @param message The message structure (ignored in this mock).
      * @return The fixed fee amount.
      */
     function getFee(
@@ -60,8 +57,6 @@ contract MockRouterClient is IRouterClient {
 
     /**
      * @notice Simulates sending a cross-chain message and returns a dummy message identifier.
-     * @param destinationChainSelector The selector for the destination chain.
-     * @param message The message structure containing the data and token transfers.
      * @return A dummy message ID.
      */
     function ccipSend(
