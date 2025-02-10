@@ -5,11 +5,14 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 
 /**
  * @title MockVRFCoordinatorV2Plus
- * @notice Ce mock simule la fonction requestRandomWords du VRF Coordinator.
+ * @notice This mock simulates the `requestRandomWords` function of the Chainlink VRF Coordinator.
+ * It is used for testing purposes to track and emit random number request events.
  */
 contract MockVRFCoordinatorV2Plus {
+    /// @notice Counter for tracking request IDs.
     uint256 public requestIdCounter;
 
+    /// @notice Event emitted when a random words request is made.
     event RandomWordsRequested(
         uint256 requestId,
         bytes32 keyHash,
@@ -21,7 +24,15 @@ contract MockVRFCoordinatorV2Plus {
     );
 
     /**
-     * @notice Simule la demande de randomWords.
+     * @dev A placeholder function for testing purposes.
+     * This function is excluded from coverage reports.
+     */
+    function test() public {}
+
+    /**
+     * @notice Simulates a request for random words.
+     * @param req The request structure containing parameters for the VRF request.
+     * @return requestId The incremented request ID for tracking purposes.
      */
     function requestRandomWords(VRFV2PlusClient.RandomWordsRequest memory req)
         external

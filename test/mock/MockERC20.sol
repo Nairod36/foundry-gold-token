@@ -18,6 +18,9 @@ contract MockERC20 is IERC20 {
     bool internal _approveReturnValue = true;
     bool internal _transferFromReturnValue = true;
 
+    // Line to exclude from coverage report
+    function test() public {}
+
     // Getters (pour consultation via tests, si besoin)
     function transferReturnValue() public view returns (bool) {
         return _transferReturnValue;
