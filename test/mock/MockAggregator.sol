@@ -17,6 +17,9 @@ contract MockAggregator is AggregatorV3Interface {
         _decimals = decimals_;
     }
 
+    // Line to exclude from coverage report
+    function test() public {}
+
     // Implementation of latestRoundData()
     function latestRoundData()
         external

@@ -1,146 +1,225 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-/// @title Lottery
-/// @notice Contrat de loterie utilisant Chainlink VRF
-/// @dev Simplifié, à adapter à vos besoins
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import './VRF2Consumer.sol';
-import './LotteryPool.sol';
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import "./LotteryPool.sol";
 
+/**
+ * @title Lottery
+ * @notice A smart contract for a lottery game utilizing Chainlink VRF for random number generation.
+ */
+contract Lottery is VRFConsumerBaseV2Plus {
+    uint64 public SUBSCRIPTION_ID;
+    address public vrfCoordinator = 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B;
+    bytes32 public keyHash = 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae;
+    uint32 public callbackGasLimit = 40000;
+    uint16 public requestConfirmations = 3;
+    uint16 public numWords = 1;
 
-contract Lottery is Ownable {
+    // Mapping VRF requests to user addresses
+    mapping(uint256 => address) private s_rollers;
+    struct LotteryResult {
+        uint256[3] numbers;
+    }
+    mapping(address => LotteryResult) private s_results;
+    mapping(address => bool) private s_requested;
 
-    
-    IERC20 public token; 
-    // Le contrat VRF2Consumer, pour demander le tirage aléatoire.
-    VRF2Consumer public vrfConsumer;
-    // Le contrat LotteryPool, qui détient le solde des participations.
-    LotteryPool public lotteryPool;
+    event DiceRolled(address indexed roller, uint256 requestId);
+    event LotteryNumbersDrawn(address indexed roller, uint256 requestId, uint256[3] numbers);
 
+    // Lottery state variables
+    LotteryPool public liquidityPool;
     address[] public players;
-    uint256[3] public lotteryNumbers;
-    uint256 public lotteryRequestId;
+    mapping(address => bool) public isParticipant;
+
     bool public lotteryStarted;
     bool public lotteryEnded;
     address public winner;
-    
-    mapping(address => bool) public isParticipant;
-    event FeeReceived(address indexed from, uint256 amount);
-    
+    uint256[3] public targetTicket;
 
+    event LotteryStarted(uint256 timestamp);
+    event PlayerEntered(address indexed player, uint256 amount);
+    event WinnerChosen(address indexed winner, uint256 prize, uint256[3] targetTicket);
+
+    /**
+     * @notice Initializes the lottery contract.
+     * @param _liquidityPool Address of the liquidity pool contract.
+     * @param subscriptionId Chainlink VRF subscription ID.
+     */
     constructor(
-        IERC20 _token
-        // address _vrfConsumer,
-        // address _lotteryPool
-    ) Ownable(msg.sender) {
-        require(address(_token) != address(0), "Invalid token address");
-        // require(_vrfConsumer != address(0), "Invalid VRF address");
-        // require(_lotteryPool != address(0), "Invalid lottery pool address");
-
-        token = _token;
-        // vrfConsumer = VRF2Consumer(_vrfConsumer);
-        // lotteryPool = LotteryPool(_lotteryPool);
+        address payable _liquidityPool,
+        uint64 subscriptionId
+    )
+        VRFConsumerBaseV2Plus(vrfCoordinator)
+    {
+        require(_liquidityPool != address(0), "Invalid liquidity pool address");
+        liquidityPool = LotteryPool(_liquidityPool);
+        SUBSCRIPTION_ID = subscriptionId;
     }
 
-    function receiveFee(uint256 feeAmount) external {
-        // Seul le contrat de token doit appeler cette fonction.
-        // Vous pouvez ajouter une vérification supplémentaire si besoin.
-        require(feeAmount > 0, "No fee received");
-        emit FeeReceived(msg.sender, feeAmount);
+    /**
+     * @notice Requests random numbers from Chainlink VRF.
+     * @param roller Address of the participant requesting the numbers.
+     * @return requestId The request ID associated with the VRF request.
+     */
+    function rollDice(address roller) internal returns (uint256 requestId) {
+        require(!s_requested[roller], "Already rolled");
+        s_requested[roller] = true;
+
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: SUBSCRIPTION_ID,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: true})
+                )
+            })
+        );
+        s_rollers[requestId] = roller;
+        emit DiceRolled(roller, requestId);
     }
 
-    // // Contrat VRFCoordinator
-    // VRFCoordinatorV2Interface public vrfCoordinator;
-    
-    // // Paramètres VRF
-    // bytes32 public keyHash;
-    // uint64 public subscriptionId;
-    // uint16 public requestConfirmations;
-    // uint32 public callbackGasLimit;
-    
-    // // Token GLD
-    // IERC20 public goldToken;
-    
-    // // Liste des participants
-    // address[] public players;
+    /**
+     * @notice Converts a random value into a ticket with 3 numbers between 1 and 50.
+     * @param randomValue The random number used to generate the ticket.
+     * @return numbers The generated ticket numbers.
+     */
+    function _drawNumbers(uint256 randomValue) internal pure returns (uint256[3] memory numbers) {
+        for (uint256 i = 0; i < 3; i++) {
+            numbers[i] = (uint256(keccak256(abi.encode(randomValue, i))) % 50) + 1;
+        }
+    }
 
-    // // Stockage du random request => pour callback
-    // mapping(uint256 => bool) public fulfilled;
+    /**
+     * @notice Callback function triggered when Chainlink VRF fulfills a request.
+     * @param requestId The request ID.
+     * @param randomWords The random words returned by Chainlink VRF.
+     */
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        address roller = s_rollers[requestId];
+        require(roller != address(0), "Unknown roller");
+        require(s_results[roller].numbers[0] == 0, "Already rolled");
 
-    // event PlayerEntered(address indexed player);
-    // event WinnerChosen(address indexed winner, uint256 amountWon);
+        uint256[3] memory numbers = _drawNumbers(randomWords[0]);
+        s_results[roller] = LotteryResult(numbers);
 
-    // /**
-    //  * @dev Le constructeur d’Ownable prend `address initialOwner`.
-    //  * On fait du déployeur (msg.sender) le propriétaire par défaut.
-    //  */
-    // constructor(
-    //     address _vrfCoordinator,
-    //     bytes32 _keyHash,
-    //     uint64 _subscriptionId,
-    //     uint16 _requestConfirmations,
-    //     uint32 _callbackGasLimit,
-    //     address _goldToken
-    // )
-    //     Ownable(msg.sender) // <-- L'adresse du déployeur devient le owner
-    // {
-    //     vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
-    //     keyHash = _keyHash;
-    //     subscriptionId = _subscriptionId;
-    //     requestConfirmations = _requestConfirmations;
-    //     callbackGasLimit = _callbackGasLimit;
-    //     goldToken = IERC20(_goldToken);
-    // }
+        emit LotteryNumbersDrawn(roller, requestId, numbers);
+    }
 
-    // /// @notice Permet à un joueur d'entrer dans la loterie
-    // function enter() external {
-    //     // Ex: on peut définir un coût en GLD pour entrer
-    //     // Simplification : pas de coût dans cet exemple
-    //     players.push(msg.sender);
-    //     emit PlayerEntered(msg.sender);
-    // }
+    /**
+     * @notice Retrieves the lottery result (ticket) for a given address.
+     * @param roller The address of the participant.
+     * @return numbers The assigned lottery numbers.
+     */
+    function getLotteryResult(address roller) public view returns (uint256[3] memory numbers) {
+        return s_results[roller].numbers;
+    }
 
-    // /// @notice Lancer la demande de random
-    // function startLottery() external onlyOwner {
-    //     vrfCoordinator.requestRandomWords(
-    //         keyHash,
-    //         subscriptionId,
-    //         requestConfirmations,
-    //         callbackGasLimit,
-    //         1
-    //     );
-    // }
+    /**
+     * @notice Handles incoming ETH deposits and registers participants.
+     */
+    receive() external payable {
+        if (msg.sender == address(liquidityPool)) {
+            return;
+        }
 
-    // /// @notice Callback du VRFCoordinator
-    // /// @dev Implémentation simplifiée (on n'utilise pas VRFConsumerBaseV2)
-    // function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal {
-    //     require(!fulfilled[requestId], "Already fulfilled");
-    //     fulfilled[requestId] = true;
+        require(lotteryStarted, "Lottery not started");
+        require(msg.value > 0, "No ETH sent");
+        require(!isParticipant[msg.sender], "Already entered");
 
-    //     // Calcul du winner
-    //     uint256 randomValue = randomWords[0];
-    //     uint256 winnerIndex = randomValue % players.length;
-    //     address winner = players[winnerIndex];
+        liquidityPool.deposit{value: msg.value}();
 
-    //     // On envoie tout le solde GLD du contrat au gagnant
-    //     uint256 balance = goldToken.balanceOf(address(this));
-    //     if (balance > 0) {
-    //         goldToken.transfer(winner, balance);
-    //         emit WinnerChosen(winner, balance);
-    //     }
+        isParticipant[msg.sender] = true;
+        players.push(msg.sender);
 
-    //     // Reset des joueurs
-    //     delete players;
-    // }
+        rollDice(msg.sender);
 
-    // /**
-    //  * @notice Méthode pour que le VRFCoordinator appelle fulfillRandomWords
-    //  * @dev Dans la vraie vie, on utilise VRFConsumerBaseV2 qui a déjà un 
-    //  * fulfillRandomWords, mais pour l'exemple, on le fait "manuellement".
-    //  */
-    // function rawFulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external {
-    //     require(msg.sender == address(vrfCoordinator), "Only VRFCoordinator");
-    //     fulfillRandomWords(requestId, randomWords);
+        emit PlayerEntered(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Requests the target ticket to determine the winner.
+     */
+    function requestTargetTicket() external onlyOwner {
+        require(getLotteryResult(address(this))[0] == 0, "Target ticket already requested");
+        rollDice(address(this));
+    }
+
+    function _generateTargetTicket() internal view returns (uint256[3] memory) {
+        return getLotteryResult(address(this));
+    }
+
+    /**
+     * @notice Calculates the distance between two tickets.
+     * @param ticket The player's ticket.
+     * @param target The target ticket.
+     * @return dist The computed distance.
+     */
+    function _ticketDistance(uint256[3] memory ticket, uint256[3] memory target) internal pure returns (uint256 dist) {
+        for (uint256 i = 0; i < 3; i++) {
+            uint256 a = ticket[i];
+            uint256 b = target[i];
+            dist += a > b ? a - b : b - a;
+        }
+    }
+
+    /**
+     * @notice Finalizes the lottery, selects the winner, and distributes the prize.
+     */
+    function finalizeLottery() external onlyOwner {
+        require(lotteryStarted, "Lottery not started");
+        require(!lotteryEnded, "Lottery already ended");
+        require(players.length > 0, "No players participated");
+
+        targetTicket = _generateTargetTicket();
+        require(targetTicket[0] != 0, "Target ticket not fulfilled");
+
+        uint256 minDistance = type(uint256).max;
+        address[] memory candidates = new address[](players.length);
+        uint256 candidateCount = 0;
+
+        for (uint256 i = 0; i < players.length; i++) {
+            uint256[3] memory playerTicket = getLotteryResult(players[i]);
+            require(playerTicket[0] != 0, "Ticket not fulfilled for player");
+            uint256 dist = _ticketDistance(playerTicket, targetTicket);
+            if (dist < minDistance) {
+                minDistance = dist;
+                candidateCount = 0;
+                candidates[candidateCount] = players[i];
+                candidateCount = 1;
+            } else if (dist == minDistance) {
+                candidates[candidateCount] = players[i];
+                candidateCount++;
+            }
+        }
+
+        winner = candidateCount > 1
+            ? candidates[uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % candidateCount]
+            : candidates[0];
+
+        uint256 prize = liquidityPool.balance();
+        liquidityPool.withdraw(prize);
+        (bool sent, ) = winner.call{value: prize}("");
+        require(sent, "Prize transfer failed");
+
+        lotteryEnded = true;
+        emit WinnerChosen(winner, prize, targetTicket);
+    }
+
+    function startLottery() external onlyOwner {
+        require(!lotteryStarted, "Lottery already started");
+        lotteryStarted = true;
+        lotteryEnded = false;
+        delete players;
+        emit LotteryStarted(block.timestamp);
+    }
+
+    function getPlayers() external view returns (address[] memory) {
+        return players;
+    }
 }
