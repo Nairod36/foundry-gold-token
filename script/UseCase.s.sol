@@ -8,6 +8,9 @@ import "../src/GoldBridge.sol";
 import "../src/Lottery.sol";
 
 contract UseCase is Script {
+
+        function testA() public {} // forge coverage ignore-file
+
     function run() external {
         vm.startBroadcast();
 
