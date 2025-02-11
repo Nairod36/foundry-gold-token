@@ -1,29 +1,27 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import "../../src/GoldBridge.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 
 /**
  * @title TestableGoldBridge
- * @notice A test contract that extends `GoldBridge` to expose internal functions for testing.
+ * @notice Contrat de test qui étend `GoldBridge` pour exposer des fonctions internes à des fins de test.
  */
 contract TestableGoldBridge is GoldBridge {
     /**
-     * @notice Constructor that initializes the TestableGoldBridge contract.
-     * @param _router Address of the Chainlink CCIP router.
-     * @param _linkToken Address of the LINK token contract.
-     * @param _goldToken Address of the GoldToken contract.
+     * @notice Constructeur qui initialise le TestableGoldBridge.
+     * @param _router Adresse du routeur CCIP.
+     * @param _goldToken Adresse du token Gold.
      */
     constructor(
         address _router,
-        address _linkToken,
         address _goldToken
-    ) GoldBridge(_router, _linkToken, _goldToken) {}
+    ) GoldBridge(_router, _goldToken) {}
 
     /**
-     * @notice Public function to test the internal `_ccipReceive` function.
-     * @param message The cross-chain message received via CCIP.
+     * @notice Fonction publique permettant de tester la réception des messages CCIP.
+     * @param message Message inter-chaînes reçu via CCIP.
      */
     function testCcipReceive(Client.Any2EVMMessage calldata message) external {
         _ccipReceive(message);
