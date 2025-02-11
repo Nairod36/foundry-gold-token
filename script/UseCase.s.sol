@@ -1,38 +1,52 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.28;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
 
-// import "forge-std/Script.sol";
-// import "../contracts/GoldToken.sol";
-// import "../contracts/Lottery.sol";
-// import "../contracts/GoldBridge.sol";
+import "forge-std/Script.sol";
+import "forge-std/console2.sol"; // Import de console2 pour pouvoir utiliser console2.log
+import "../src/GoldToken.sol";
+import "../src/GoldBridge.sol";
+import "../src/Lottery.sol";
 
-// contract UseCase is Script {
-//     function run() external {
-//         // On récupère les adresses depuis un .env ou depuis un script de déploiement
-//         address goldTokenAddr = 0x1234...;
-//         address lotteryAddr = 0x5678...;
-//         address goldBridgeAddr = 0x9ABC...;
+contract UseCase is Script {
+    function run() external {
+        vm.startBroadcast();
 
-//         vm.startBroadcast();
+        // Récupération des adresses des contrats déployés via les variables d'environnement
+        address goldTokenAddress = vm.envAddress("GOLDTOKEN_ADDRESS");
+        address goldBridgeAddress = vm.envAddress("GOLDBRIDGE_ADDRESS");
+        address lotteryAddress = vm.envAddress("LOTTERY_ADDRESS");
 
-//         GoldToken goldToken = GoldToken(goldTokenAddr);
-//         Lottery lottery = Lottery(lotteryAddr);
-//         GoldBridge bridge = GoldBridge(goldBridgeAddr);
+        // Conversion en payable pour les contrats possédant une fonction receive payable
+        GoldToken goldToken = GoldToken(payable(goldTokenAddress));
+        GoldBridge goldBridge = GoldBridge(goldBridgeAddress);
+        Lottery lottery = Lottery(payable(lotteryAddress));
 
-//         // 1) Mint
-//         goldToken.mint{value: 1 ether}();
-//         // 2) Participer à la loterie
-//         lottery.enter();
-//         // 3) Envoyer les fees accumulés à la loterie
-//         goldToken.transferFeesToLottery();
-//         // 4) Lancer la loterie (VRF)
-//         lottery.startLottery(); 
-//         // On suppose qu'une fois VRF callback effectué, un gagnant reçoit le pot
-//         // 5) Bridger des tokens
-//         goldToken.approve(address(bridge), 1000);
-//         bridge.bridgeToChain(56, 1000, msg.sender); // 56 = BSC
-//         // etc...
+        address user = msg.sender;
 
-//         vm.stopBroadcast();
-//     }
-// }
+        // --- 1. Mint de tokens Gold ---
+        console2.log("Minting GoldToken...");
+        goldToken.mint{value: 1 ether}();
+        console2.log("User GoldToken balance:", goldToken.balanceOf(user));
+
+        // --- 2. Participation à la loterie ---
+        // Démarrer la loterie (la fonction startLottery est réservée au propriétaire)
+        console2.log("Starting Lottery...");
+        lottery.startLottery();
+
+        // Pour participer, on envoie 10 ether directement au contrat Lottery (trigger du receive)
+        console2.log("Entering Lottery...");
+        (bool success, ) = address(lottery).call{value: 10 ether}("");
+        require(success, "Lottery participation failed");
+        console2.log("Lottery participation confirmed!");
+
+        // --- 3. Bridging vers BSC ---
+        console2.log("Bridging tokens...");
+        goldToken.approve(address(goldBridge), 50e18);
+        bytes32 messageId = goldBridge.bridgeToBSC(50e18, user);
+        // Affichage du messageId converti en uint256
+        console2.log("Bridge transaction ID (as uint256):", uint256(messageId));
+        // Vous pouvez aussi utiliser : console2.logBytes32(messageId);
+
+        vm.stopBroadcast();
+    }
+}
