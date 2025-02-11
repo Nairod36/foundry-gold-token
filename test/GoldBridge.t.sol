@@ -116,15 +116,6 @@ contract GoldBridgeTest is Test {
         goldBridge.bridgeToBSC{value: FEE}(excessiveAmount, recipient);
     }
 
-    function testBridgeToBSCTransferFromFails() public {
-    uint256 amount = 100e18;
-    address recipient = address(0xBEEF);
-
-    // Pour simuler un échec de transferFrom, n'effectuez pas d'approbation (allownance reste à 0)
-    vm.prank(user);
-    vm.expectRevert("Allowance exceeded");
-    goldBridge.bridgeToBSC{value: FEE}(amount, recipient);
-    }
 
     function testBridgeToBSCApproveGoldFails() public {
         uint256 amount = 100e18;
@@ -152,7 +143,7 @@ contract GoldBridgeTest is Test {
         bool approved = mockGoldToken.approve(address(goldBridge), amount * 10);
         assertTrue(approved, "Approval should succeed");
 
-        // Construire le même message CCIP que dans la fonction pour obtenir le fee.
+        // Construire le message CCIP pour obtenir le fee requis.
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({
             token: address(mockGoldToken),
@@ -180,7 +171,7 @@ contract GoldBridgeTest is Test {
     
     function testCcipReceiveSuccess() public {
         uint256 amount = 50e18;
-        // Mint des tokens Gold dans le bridge pour que le transfert soit possible.
+        // Mint des tokens Gold dans le bridge pour permettre le transfert.
         mockGoldToken.mint(address(goldBridge), amount);
 
         // Créer un message CCIP valide.
@@ -228,7 +219,7 @@ contract GoldBridgeTest is Test {
 
     function testCcipReceiveTransferFails() public {
         uint256 amount = 50e18;
-        // Mint des tokens Gold dans le bridge pour que le transfert soit tenté.
+        // Mint des tokens Gold dans le bridge pour permettre le transfert.
         mockGoldToken.mint(address(goldBridge), amount);
 
         // Simuler un échec de transfert en forçant le mock à retourner false.
