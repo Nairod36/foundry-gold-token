@@ -13,7 +13,7 @@ contract DeployGoldenBridge is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
 
         // Récupérer les adresses depuis les variables d'environnement
-        address router = vm.envAddress("ROUTER_ADDRESS");
+        address router = vm.envAddress("ROUTER_ADDRESS_SEPO");
         address goldToken = vm.envAddress("GOLDTOKEN_ADDRESS");
 
         vm.startBroadcast(deployerKey);

@@ -13,7 +13,7 @@ contract DeployGoldBridgeBSC is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
 
         // Récupérer les adresses pour le réseau BSC depuis les variables d'environnement
-        address router = vm.envAddress("ROUTER_BSC_ADDRESS");
+        address router = vm.envAddress("ROUTER_BSC_ADDRESS_BSC");
         address goldToken = vm.envAddress("GOLDTOKEN_BSC_ADDRESS");
 
         vm.startBroadcast(deployerKey);
