@@ -18,7 +18,7 @@ contract MockAggregator is AggregatorV3Interface {
     }
 
     // Line to exclude from coverage report
-    function test() public {}
+    function testA() public {}
 
     // Implementation of latestRoundData()
     function latestRoundData()

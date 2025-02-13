@@ -19,9 +19,6 @@ import "./interfaces/ILottery.sol";
  */
 contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
 
-    // Cette fonction n'est utilisée qu'à des fins de couverture de test.
-    function testA() public {} // forge coverage ignore-file
-
     // Chainlink price feeds
     AggregatorV3Interface public goldFeed; // Feed XAU/USD
     AggregatorV3Interface public ethFeed;  // Feed ETH/USD
