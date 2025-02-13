@@ -1,79 +1,76 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import {IRouterClient} from "@chainlink/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title MockRouterClient
- * @notice A mock implementation of the Chainlink CCIP Router Client.
- * This contract simulates cross-chain message sending and fee calculation for testing purposes.
+ * @notice Une implémentation mock du client Router Chainlink CCIP.
+ * Ce contrat simule l'envoi de messages inter-chaînes et le calcul de frais pour les tests.
  */
 contract MockRouterClient is IRouterClient {
-    /// @notice Fixed fee for all messages.
+    using SafeERC20 for IERC20;
+
+    /// @notice Frais fixe pour tous les messages.
     uint256 public fee;
-    /// @notice Dummy message ID used for testing.
+    /// @notice Identifiant de message fictif utilisé pour les tests.
     bytes32 public dummyMessageId;
-    /// @notice Counter tracking the number of messages sent.
+    /// @notice Compteur du nombre de messages envoyés.
     uint256 public sendCount;
 
     /**
-     * @notice Constructor to initialize the mock router client.
-     * @param _fee The fixed fee amount to be used for all messages.
+     * @notice Constructeur pour initialiser le mock du router.
+     * @param _fee Le montant fixe de frais à utiliser pour tous les messages.
      */
     constructor(uint256 _fee) {
         fee = _fee;
     }
 
     /**
-     * @dev Function used for testing purposes.
-     * This function is excluded from coverage reports.
+     * @dev Fonction utilisée à des fins de test.
      */
     function test() public {}
 
     /**
-     * @notice Checks if a chain is supported.
-     * @return supported True if the chain is supported, otherwise false.
+     * @notice Vérifie si une chaîne est supportée.
+     * @return supported True si la chaîne est supportée, sinon false.
      */
-    function isChainSupported(
-        uint64 destChainSelector
-    ) external pure override returns (bool supported) {
-        // For this mock, we consider that any non-zero value is supported.
+    function isChainSupported(uint64 destChainSelector) external pure override returns (bool supported) {
+        // Pour ce mock, toute valeur non nulle est considérée comme supportée.
         return destChainSelector != 0;
     }
 
     /**
-     * @notice Returns the fixed fee for any message.
-     * @return The fixed fee amount.
+     * @notice Renvoie le frais fixe pour n'importe quel message.
+     * @return Le montant fixe de frais.
      */
     function getFee(
-        uint64 /* destinationChainSelector */,
+        uint64, /* destinationChainSelector */
         Client.EVM2AnyMessage memory /* message */
     ) external view override returns (uint256) {
-        // In this mock, we ignore destinationChainSelector and message and simply return the predefined fee.
+        // Retourne simplement le frais prédéfini.
         return fee;
     }
 
     /**
-     * @notice Simulates sending a cross-chain message and returns a dummy message identifier.
-     * @return A dummy message ID.
+     * @notice Simule l'envoi d'un message inter-chaînes et retourne un identifiant de message fictif.
+     * @return Un identifiant de message fictif.
      */
     function ccipSend(
         uint64 destinationChainSelector,
         Client.EVM2AnyMessage calldata message
     ) external payable override returns (bytes32) {
-        // Ensure that a fee token is provided.
-        require(message.feeToken != address(0), "Fee token not provided");
+        // Si un feeToken est fourni (non zéro), effectue le transfert des frais.
+        // Sinon, on suppose que les frais sont payés en ETH via msg.value.
+        if (message.feeToken != address(0)) {
+            IERC20 feeTokenInstance = IERC20(message.feeToken);
+            feeTokenInstance.safeTransferFrom(msg.sender, address(this), fee);
+        }
         
-        // Validate and transfer the LINK fee.
-        IERC20 feeToken = IERC20(message.feeToken);
-        require(
-            feeToken.transferFrom(msg.sender, address(this), fee),
-            "Fee transfer failed"
-        );
-        
-        // For Gold tokens, we only verify the approval but do not transfer them since this is just a mock.
+        // Pour les tokens à transférer, vérifier l'allowance.
         if (message.tokenAmounts.length > 0) {
             for (uint256 i = 0; i < message.tokenAmounts.length; i++) {
                 IERC20 token = IERC20(message.tokenAmounts[i].token);
@@ -85,7 +82,7 @@ contract MockRouterClient is IRouterClient {
         }
         
         sendCount++;
-        // Compute a dummy message ID using the counter, timestamp, destination, and a portion of the message data.
+        // Calcul d'un identifiant fictif.
         dummyMessageId = keccak256(
             abi.encodePacked(sendCount, block.timestamp, destinationChainSelector, message.data)
         );

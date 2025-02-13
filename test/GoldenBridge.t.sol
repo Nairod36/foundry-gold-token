@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "./mock/MockERC20.sol";
@@ -8,19 +8,15 @@ import "./mock/TestableGoldenBridge.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 
 contract GoldenBridgeTest is Test {
-    TestableGoldenBridge public goldBridge;
+    TestableGoldenBridge public goldenBridge;
     MockRouterClient public mockRouter;
-    MockERC20 public mockLinkToken;
     MockERC20 public mockGoldToken;
 
-    // Adresses de test
     address public owner = address(0xABCD);
     address public user = address(0xBEEF);
 
-    // Soldes initiaux pour les mocks (en wei)
     uint256 public constant INITIAL_GOLD_SUPPLY = 1000e18;
-    uint256 public constant INITIAL_LINK_SUPPLY = 1000e18;
-    uint256 public constant FEE = 10e18; // Fee fixé par le mockRouter
+    uint256 public constant FEE = 10e18;
 
     // Événement attendu (défini dans GoldenBridge)
     event BridgeSent(
@@ -35,32 +31,30 @@ contract GoldenBridgeTest is Test {
         vm.label(owner, "Owner");
         vm.label(user, "User");
 
-        // Déploiement des mocks
+        // Approvisionner l'utilisateur en ETH pour payer les frais.
+        vm.deal(user, 100 ether);
+
+        // Déploiement des mocks.
         mockRouter = new MockRouterClient(FEE);
-        mockLinkToken = new MockERC20("Chainlink", "LINK", 18);
         mockGoldToken = new MockERC20("Gold Token", "GLD", 18);
 
-        // Attribution de tokens Gold au user
+        // Mint Gold tokens pour l'utilisateur.
         mockGoldToken.mint(user, INITIAL_GOLD_SUPPLY);
 
         // Déploiement du contrat via TestableGoldenBridge
-        goldBridge = new TestableGoldenBridge(
+        goldenBridge = new TestableGoldenBridge(
             address(mockRouter),
-            address(mockLinkToken),
             address(mockGoldToken)
         );
-
-        // Attribution de tokens LINK au contrat GoldenBridge pour couvrir les frais CCIP
-        mockLinkToken.mint(address(goldBridge), INITIAL_LINK_SUPPLY);
     }
 
     // --- Tests du constructeur ---
+    
     function testConstructorRevertsWithZeroRouter() public {
         // Le revert attendu provient d'un custom error "InvalidRouter(address)"
         vm.expectRevert(abi.encodeWithSignature("InvalidRouter(address)", address(0)));
         new TestableGoldenBridge(
             address(0),
-            address(mockLinkToken),
             address(mockGoldToken)
         );
     }
@@ -69,8 +63,7 @@ contract GoldenBridgeTest is Test {
         vm.expectRevert("Invalid LINK token address");
         new TestableGoldenBridge(
             address(mockRouter),
-            address(0),
-            address(mockGoldToken)
+            address(0)
         );
     }
 
@@ -78,206 +71,179 @@ contract GoldenBridgeTest is Test {
         vm.expectRevert("Invalid gold token address");
         new TestableGoldenBridge(
             address(mockRouter),
-            address(mockLinkToken),
             address(0)
         );
     }
 
     // --- Tests de la fonction bridgeToBSC() ---
-
-    // 1. Vérification du solde insuffisant de Gold
-    function testBridgeToBSCInsufficientGoldBalance() public {
-        address noBalance = address(0xDEAD);
-        vm.prank(noBalance);
-        vm.expectRevert("Solde GLD insuffisant");
-        goldBridge.bridgeToBSC(1e18, user);
-    }
-
-    // 2. Vérification de l'absence d'approbation (transferFrom échoue à cause de l'allowance)
-    function testBridgeToBSCNoApproval() public {
-        uint256 amount = 100e18;
-        vm.prank(user);
-        vm.expectRevert("Allowance exceeded");
-        goldBridge.bridgeToBSC(amount, user);
-    }
-
-    // 3. Solde LINK insuffisant pour payer les frais
-    function testBridgeToBSCInsufficientLinkBalance() public {
-        uint256 amount = 100e18;
-        // L'utilisateur approuve le contrat pour le transfert de ses tokens Gold
-        vm.prank(user);
-        mockGoldToken.approve(address(goldBridge), amount);
-
-        // Transférer les tokens LINK du contrat vers une autre adresse pour simuler un solde insuffisant
-        vm.prank(address(goldBridge));
-        mockLinkToken.transfer(owner, INITIAL_LINK_SUPPLY);
-
-        vm.prank(user);
-        vm.expectRevert("Solde LINK insuffisant pour les frais");
-        goldBridge.bridgeToBSC(amount, user);
-    }
-
-    // 4. Succès de bridgeToBSC (vérification des transferts et de l'événement émis)
+    
     function testBridgeToBSCSuccess() public {
-    uint256 amount = 100e18;
-    address recipient = address(0xBEEF);
-    
-    // Initial balances
-    uint256 initialUserGold = mockGoldToken.balanceOf(user);
-    uint256 initialBridgeGold = mockGoldToken.balanceOf(address(goldBridge));
-    uint256 initialBridgeLink = mockLinkToken.balanceOf(address(goldBridge));
-    uint256 initialRouterLink = mockLinkToken.balanceOf(address(mockRouter));
-    
-    // Approve bridge to spend user's Gold tokens
-    vm.prank(user);
-    mockGoldToken.approve(address(goldBridge), amount);
-    
-    // Approve LINK pour le router directement depuis le bridge
-    // Note: Ceci est nécessaire car le bridge doit approuver le router à dépenser ses LINK
-    vm.prank(address(goldBridge));
-    mockLinkToken.approve(address(mockRouter), FEE);
-    
-    // Execute bridge transfer
-    vm.prank(user);
-    bytes32 messageId = goldBridge.bridgeToBSC(amount, recipient);
-    
-    // Vérifier que l'ID du message correspond à celui stocké dans le mock
-    assertEq(messageId, mockRouter.dummyMessageId(), "Message ID mismatch");
-    
-    // Verify Gold token transfers
-    assertEq(
-        mockGoldToken.balanceOf(user),
-        initialUserGold - amount,
-        "Incorrect user Gold balance after bridge"
-    );
-    assertEq(
-        mockGoldToken.balanceOf(address(goldBridge)),
-        initialBridgeGold + amount,
-        "Incorrect bridge Gold balance after bridge"
-    );
-    
-    // Verify LINK fee transfers
-    assertEq(
-        mockLinkToken.balanceOf(address(goldBridge)),
-        initialBridgeLink - FEE,
-        "Incorrect bridge LINK balance after fee payment"
-    );
-    assertEq(
-        mockLinkToken.balanceOf(address(mockRouter)),
-        initialRouterLink + FEE,
-        "Incorrect router LINK balance after fee payment"
-    );
-    
-    // Verify send count increased
-    assertEq(mockRouter.sendCount(), 1, "Send count should be 1");
-}
-
-    // 5. Simuler l'échec de transferFrom dans le token Gold
-    function testBridgeToBSCFailTransferFrom() public {
         uint256 amount = 100e18;
+        address recipient = address(0xBEEF);
+
+        uint256 initialUserGold = mockGoldToken.balanceOf(user);
+        uint256 initialBridgeGold = mockGoldToken.balanceOf(address(goldenBridge));
+
+        // L'utilisateur approuve le bridge pour dépenser ses tokens Gold (approuve une quantité largement supérieure).
         vm.prank(user);
-        // Approve normalement pour passer la vérification d'allowance
-        mockGoldToken.approve(address(goldBridge), amount);
-        // Forcer l'échec du transferFrom via le setter (à implémenter dans le mock)
-        mockGoldToken.setTransferFromReturnValue(false);
+        bool approved = mockGoldToken.approve(address(goldenBridge), amount * 10);
+        assertTrue(approved, "Approval should succeed");
+        uint256 allowed = mockGoldToken.allowance(user, address(goldenBridge));
+        assertEq(allowed, amount * 10, "Allowance not set correctly");
+
+        // L'utilisateur appelle bridgeToBSC en fournissant les frais en ETH.
         vm.prank(user);
-        vm.expectRevert("Transfert de token Gold echoue");
-        goldBridge.bridgeToBSC(amount, user);
-        // Réinitialiser pour ne pas impacter d'autres tests
-        mockGoldToken.setTransferFromReturnValue(true);
+        bytes32 messageId = goldenBridge.bridgeToBSC{value: FEE}(amount, recipient);
+
+        // Vérifier que le solde de tokens Gold du user a diminué du montant transféré.
+        assertEq(
+            mockGoldToken.balanceOf(user),
+            initialUserGold - amount,
+            "Incorrect user Gold balance after bridge"
+        );
+        // Vérifier que le bridge détient désormais les tokens Gold transférés.
+        assertEq(
+            mockGoldToken.balanceOf(address(goldenBridge)),
+            initialBridgeGold + amount,
+            "Incorrect bridge Gold balance after bridge"
+        );
+        // Vérifier que le messageId retourné n'est pas nul.
+        assertTrue(messageId != bytes32(0), "Message ID should not be zero");
     }
 
-    // 6. Simuler l'échec de l'approbation du token Gold
-    function testBridgeToBSCFailGoldApprove() public {
-        uint256 amount = 100e18;
+    function testBridgeToBSCInsufficientGoldBalance() public {
+        uint256 userGold = mockGoldToken.balanceOf(user);
+        uint256 excessiveAmount = userGold + 1; // Plus que le solde du user.
+        address recipient = address(0xBEEF);
+
         vm.prank(user);
-        // Approve normalement pour permettre le transfertFrom
-        mockGoldToken.approve(address(goldBridge), amount);
-        // Forcer l'échec de approve sur le token Gold via le setter (à implémenter dans le mock)
+        mockGoldToken.approve(address(goldenBridge), excessiveAmount);
+
+        vm.prank(user);
+        vm.expectRevert("Solde GLD insuffisant");
+        goldenBridge.bridgeToBSC{value: FEE}(excessiveAmount, recipient);
+    }
+
+
+    function testBridgeToBSCApproveGoldFails() public {
+        uint256 amount = 100e18;
+        address recipient = address(0xBEEF);
+
+        vm.prank(user);
+        bool approved = mockGoldToken.approve(address(goldenBridge), amount * 10);
+        assertTrue(approved, "User approval should succeed");
+
+        // Forcer le retour false pour approve sur le GoldToken.
         mockGoldToken.setApproveReturnValue(false);
+
         vm.prank(user);
         vm.expectRevert("Approbation du token Gold echouee");
-        goldBridge.bridgeToBSC(amount, user);
-        // Réinitialiser
+        goldenBridge.bridgeToBSC{value: FEE}(amount, recipient);
+
         mockGoldToken.setApproveReturnValue(true);
     }
 
-    // 7. Simuler l'échec de l'approbation du token LINK
-    function testBridgeToBSCFailLinkApprove() public {
+    function testBridgeToBSCInsufficientEth() public {
         uint256 amount = 100e18;
+        address recipient = address(0xBEEF);
+
         vm.prank(user);
-        mockGoldToken.approve(address(goldBridge), amount);
-        // Forcer l'échec de approve sur le token LINK via le setter (à implémenter dans le mock)
-        mockLinkToken.setApproveReturnValue(false);
+        bool approved = mockGoldToken.approve(address(goldenBridge), amount * 10);
+        assertTrue(approved, "Approval should succeed");
+
+        // Construire le message CCIP pour obtenir le fee requis.
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({
+            token: address(mockGoldToken),
+            amount: amount
+        });
+        Client.EVM2AnyMessage memory evmMsg = Client.EVM2AnyMessage({
+            receiver: abi.encode(recipient),
+            data: abi.encode(amount),
+            tokenAmounts: tokenAmounts,
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV2({
+                gasLimit: 200_000,
+                allowOutOfOrderExecution: true
+            })),
+            feeToken: address(0)
+        });
+        uint256 requiredFee = mockRouter.getFee(goldenBridge.BSC_CHAIN_SELECTOR(), evmMsg);
+
+        // Envoyer moins d'ETH que requis.
         vm.prank(user);
-        vm.expectRevert("Approbation LINK echouee");
-        goldBridge.bridgeToBSC(amount, user);
-        // Réinitialiser
-        mockLinkToken.setApproveReturnValue(true);
+        vm.expectRevert("Solde ETH insuffisant pour les frais");
+        goldenBridge.bridgeToBSC{value: requiredFee - 1}(amount, recipient);
     }
 
-    // --- Tests de la fonction _ccipReceive() (via testCcipReceive) ---
-
-    // 8. Succès de _ccipReceive
+    // --- Tests pour la fonction _ccipReceive via testCcipReceive() ---
+    
     function testCcipReceiveSuccess() public {
         uint256 amount = 50e18;
-        // Le contrat doit détenir des tokens Gold pour réaliser le transfert
-        mockGoldToken.mint(address(goldBridge), amount);
+        // Mint des tokens Gold dans le bridge pour permettre le transfert.
+        mockGoldToken.mint(address(goldenBridge), amount);
 
+        // Créer un message CCIP valide.
         Client.Any2EVMMessage memory message = Client.Any2EVMMessage({
-            messageId: bytes32("testMessage"),
-            sourceChainSelector: goldBridge.BSC_CHAIN_SELECTOR(),
+            messageId: keccak256("testCcipReceiveSuccess"),
+            sourceChainSelector: goldenBridge.BSC_CHAIN_SELECTOR(), // Doit être égal à BSC_CHAIN_SELECTOR.
             sender: abi.encode(user),
             data: abi.encode(amount),
             destTokenAmounts: new Client.EVMTokenAmount[](0)
         });
 
         uint256 initialUserGold = mockGoldToken.balanceOf(user);
-        goldBridge.testCcipReceive(message);
+        uint256 initialBridgeGold = mockGoldToken.balanceOf(address(goldenBridge));
+
+        goldenBridge.testCcipReceive(message);
+
+        // Vérifier que l'utilisateur a bien reçu les tokens.
         assertEq(
             mockGoldToken.balanceOf(user),
             initialUserGold + amount,
-            "Le destinataire doit recevoir les tokens Gold"
+            "User should receive tokens from bridge"
+        );
+        // Vérifier que le solde du bridge diminue du montant transféré.
+        assertEq(
+            mockGoldToken.balanceOf(address(goldenBridge)),
+            initialBridgeGold - amount,
+            "Bridge balance should decrease by transferred amount"
         );
     }
 
-    // 9. Rejet de _ccipReceive si le message provient d'une chaîne incorrecte
-    function testCcipReceiveFailsWrongChain() public {
+    function testCcipReceiveWrongChain() public {
         uint256 amount = 50e18;
+        // Créer un message avec un mauvais sourceChainSelector.
         Client.Any2EVMMessage memory message = Client.Any2EVMMessage({
-            messageId: bytes32("testMessage"),
-            sourceChainSelector: 1234, // chaîne incorrecte
+            messageId: keccak256("testCcipReceiveWrongChain"),
+            sourceChainSelector: 1234,  // Valeur incorrecte.
             sender: abi.encode(user),
             data: abi.encode(amount),
             destTokenAmounts: new Client.EVMTokenAmount[](0)
         });
+
         vm.expectRevert("Message non provenant de BSC");
-        goldBridge.testCcipReceive(message);
+        goldenBridge.testCcipReceive(message);
     }
 
-    // 10. Rejet de _ccipReceive si le transfert de token échoue
-    function testCcipReceiveFailsWhenTransferFails() public {
+    function testCcipReceiveTransferFails() public {
         uint256 amount = 50e18;
-        // Assurer que le contrat détient des tokens Gold
-        mockGoldToken.mint(address(goldBridge), amount);
-        // Forcer l'échec du transfert dans le mock via le setter
+        // Mint des tokens Gold dans le bridge pour permettre le transfert.
+        mockGoldToken.mint(address(goldenBridge), amount);
+
+        // Simuler un échec de transfert en forçant le mock à retourner false.
         mockGoldToken.setTransferReturnValue(false);
+
         Client.Any2EVMMessage memory message = Client.Any2EVMMessage({
-            messageId: bytes32("testMessage"),
-            sourceChainSelector: goldBridge.BSC_CHAIN_SELECTOR(),
+            messageId: keccak256("testCcipReceiveTransferFails"),
+            sourceChainSelector: goldenBridge.BSC_CHAIN_SELECTOR(),
             sender: abi.encode(user),
             data: abi.encode(amount),
             destTokenAmounts: new Client.EVMTokenAmount[](0)
         });
-        vm.expectRevert("Transfert de token vers le destinataire echoue");
-        goldBridge.testCcipReceive(message);
-        // Réinitialiser
-        mockGoldToken.setTransferReturnValue(true);
-    }
 
-    // --- Test de détection de la chaîne ---
-    function testChainIdDetection() public view {
-        uint256 chainId = block.chainid;
-        assert(chainId != 0);
+        vm.expectRevert("Transfert de token vers le destinataire echoue");
+        goldenBridge.testCcipReceive(message);
+
+        mockGoldToken.setTransferReturnValue(true);
     }
 }

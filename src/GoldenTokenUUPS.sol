@@ -19,6 +19,7 @@ import "./interfaces/ILottery.sol";
  */
 contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
 
+    // Cette fonction n'est utilisée qu'à des fins de couverture de test.
     function testA() public {} // forge coverage ignore-file
 
     // Chainlink price feeds
@@ -93,18 +94,29 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
         emit PriceFeedsUpdated(address(_goldFeed), address(_ethFeed));
     }
 
+    /**
+     * @notice Récupère le prix actuel de l'or depuis Chainlink (8 décimales)
+     */
     function getGoldPrice() public view returns (uint256) {
         (, int256 answer, , , ) = goldFeed.latestRoundData();
         require(answer > 0, "Invalid gold price");
         return uint256(answer);
     }
 
+    /**
+     * @notice Récupère le prix actuel de l'ETH depuis Chainlink (8 décimales)
+     */
     function getEthPrice() public view returns (uint256) {
         (, int256 answer, , , ) = ethFeed.latestRoundData();
         require(answer > 0, "Invalid ETH price");
         return uint256(answer);
     }
 
+    /**
+     * @notice Estime le nombre de tokens (avant frais) obtenus pour un montant d'ETH donné.
+     * @param ethAmount Montant d'ETH en wei utilisé pour le mint.
+     * @return tokenAmount Montant brut de tokens (18 décimales).
+     */
     function previewMint(uint256 ethAmount) public view returns (uint256 tokenAmount) {
         uint256 ethPrice = getEthPrice();
         uint256 goldPrice = getGoldPrice();
@@ -112,6 +124,13 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
         tokenAmount = (usdAmount * TOKEN_DECIMALS * MINT_RATIO) / goldPrice;
     }
 
+    /**
+     * @notice Permet aux utilisateurs de minter des tokens en envoyant de l'ETH.
+     * Un frais de 5% est appliqué :
+     * - Le demandeur reçoit le montant net.
+     * - 50% des frais sont _mintés au contrat de loterie.
+     * - 50% des frais sont _mintés à l'adresse adminFeeCollector.
+     */
     function mint() public payable nonReentrant {
         require(msg.value > 0, "Must send ETH to mint tokens");
         uint256 grossTokenAmount = previewMint(msg.value);
@@ -120,16 +139,21 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
         uint256 feeTokens = (grossTokenAmount * FEE_PERCENTAGE) / 100;
         uint256 netTokenAmount = grossTokenAmount - feeTokens;
 
-        _mint(msg.sender, grossTokenAmount);
-
-        uint256 feeForAdmin = feeTokens / 2;
-        uint256 feeForLottery = feeTokens - feeForAdmin;
-        _transfer(msg.sender, adminFeeCollector, feeForAdmin);
-        _transfer(msg.sender, address(lotteryContract), feeForLottery);
+        _mint(msg.sender, netTokenAmount);
+        _mint(address(lotteryContract), feeTokens / 2);
+        _mint(adminFeeCollector, feeTokens / 2);
 
         emit Minted(msg.sender, msg.value, netTokenAmount);
     }
 
+    /**
+     * @notice Permet aux utilisateurs de brûler leurs tokens pour recevoir de l'ETH.
+     * Un frais de 5% est prélevé :
+     * - Le montant net (après frais) est converti en ETH selon les prix actuels.
+     * - 50% des frais sont _mintés au contrat de loterie.
+     * - 50% des frais sont _mintés à l'adresse adminFeeCollector.
+     * @param tokenAmount Nombre total de tokens à brûler (frais inclus).
+     */
     function burn(uint256 tokenAmount) external nonReentrant {
         require(tokenAmount > 0, "Token amount must be greater than 0");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient token balance");
@@ -142,12 +166,9 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
         uint256 refundEth = (netTokens * goldPrice * ETH_DECIMALS) / (TOKEN_DECIMALS * MINT_RATIO * ethPrice);
         require(address(this).balance >= refundEth, "Contract balance insufficient for refund");
 
-        uint256 feeForAdmin = feeTokens / 2;
-        uint256 feeForLottery = feeTokens - feeForAdmin;
-        _transfer(msg.sender, adminFeeCollector, feeForAdmin);
-        _transfer(msg.sender, address(lotteryContract), feeForLottery);
-
-        _burn(msg.sender, netTokens);
+        _burn(msg.sender, tokenAmount);
+        _mint(address(lotteryContract), feeTokens / 2);
+        _mint(adminFeeCollector, feeTokens / 2);
 
         (bool sent, ) = msg.sender.call{value: refundEth}("");
         require(sent, "ETH transfer failed");
@@ -155,5 +176,8 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
         emit Burned(msg.sender, tokenAmount, refundEth);
     }
 
+    /**
+     * @notice Permet au contrat de recevoir de l'ETH (par exemple lors des opérations de mint).
+     */
     receive() external payable {}
 }
