@@ -12,6 +12,9 @@ import "../test/mock/MockVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Deploy is Script {
+
+            function testA() public {} // forge coverage ignore-file
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 

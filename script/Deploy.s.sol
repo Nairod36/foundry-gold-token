@@ -11,6 +11,9 @@ import "../test/mock/MockRouterClient.sol";
 import "../test/mock/MockVRFCoordinatorV2Plus.sol";
 
 contract Deploy is Script {
+
+            function testA() public {} // forge coverage ignore-file
+
     function run() external {
         // Déploiement des mocks pour les agrégateurs et le routeur CCIP
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

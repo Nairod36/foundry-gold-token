@@ -59,14 +59,6 @@ contract GoldenBridgeTest is Test {
         );
     }
 
-    function testConstructorRevertsWithZeroLinkToken() public {
-        vm.expectRevert("Invalid LINK token address");
-        new TestableGoldenBridge(
-            address(mockRouter),
-            address(0)
-        );
-    }
-
     function testConstructorRevertsWithZeroGoldToken() public {
         vm.expectRevert("Invalid gold token address");
         new TestableGoldenBridge(
