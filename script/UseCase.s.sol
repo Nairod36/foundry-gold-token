@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Script.sol";
 import "forge-std/console2.sol"; // Import de console2 pour pouvoir utiliser console2.log
-import "../src/GoldToken.sol";
-import "../src/GoldBridge.sol";
+import "../src/GoldenToken.sol";
+import "../src/GoldenBridge.sol";
 import "../src/Lottery.sol";
 
 contract UseCase is Script {
@@ -20,8 +20,8 @@ contract UseCase is Script {
         address lotteryAddress = vm.envAddress("LOTTERY_ADDRESS");
 
         // Conversion en payable pour les contrats possédant une fonction receive payable
-        GoldToken goldToken = GoldToken(payable(goldTokenAddress));
-        GoldBridge goldBridge = GoldBridge(goldBridgeAddress);
+        GoldenToken goldToken = GoldenToken(payable(goldTokenAddress));
+        GoldenBridge goldBridge = GoldenBridge(goldBridgeAddress);
         Lottery lottery = Lottery(payable(lotteryAddress));
 
         address user = msg.sender;

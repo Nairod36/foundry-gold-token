@@ -17,7 +17,7 @@ import "./interfaces/ILottery.sol";
  * - 50% des frais sont envoyés au contrat de loterie (utilisant Chainlink VRF)
  * - 50% à l'adresse de collecte des frais administratifs.
  */
-contract GoldToken is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
 
     // Cette fonction n'est utilisée qu'à des fins de couverture de test.
     function testA() public {} // forge coverage ignore-file

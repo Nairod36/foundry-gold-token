@@ -1,45 +1,43 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.28;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
 
-// import "forge-std/Script.sol";
-// import "../contracts/GoldToken.sol";
-// import "../contracts/Lottery.sol";
-// import "../contracts/GoldBridge.sol";
+import "forge-std/Script.sol";
+import "../src/GoldenBridge.sol";
+import "../src/GoldenToken.sol";
+import "../src/Lottery.sol";
+import "../src/LotteryPool.sol";
+import "../test/mock/MockAggregator.sol";
+import "../test/mock/MockRouterClient.sol";
+import "../test/mock/MockVRFCoordinatorV2Plus.sol";
 
-// contract Deploy is Script {
-//     function run() external {
-//         vm.startBroadcast();
+contract Deploy is Script {
+    function run() external {
+        // Déploiement des mocks pour les agrégateurs et le routeur CCIP
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-//         // Adresses Chainlink Aggregators (mainnet)
-//         address XAU_USD = 0x214f6bb8b9C55F7E3e59F977704b88Ae68DaD2A8; 
-//         address ETH_USD = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612; 
-        
-//         // Déploiement GoldToken
-//         GoldToken goldToken = new GoldToken(XAU_USD, ETH_USD);
+        vm.startBroadcast(deployerPrivateKey);
 
-//         // Déploiement Lottery
-//         // Données VRF : on met des placeholders
-//         address vrfCoordinator = address(0xVRF);
-//         bytes32 keyHash = 0x00;
-//         uint64 subId = 0;
-//         uint16 confirmations = 3;
-//         uint32 gasLimit = 200000;
-//         Lottery lottery = new Lottery(
-//             vrfCoordinator,
-//             keyHash,
-//             subId,
-//             confirmations,
-//             gasLimit,
-//             address(goldToken)
-//         );
+        // Déploiement du LotteryPool
+        LotteryPool lotteryPool = new LotteryPool();
+        console.log("LotteryPool deploy on :", address(lotteryPool));
 
-//         // Lier GoldToken <-> Lottery
-//         goldToken.setLotteryContract(address(lottery));
+        Lottery lottery = new Lottery(payable(lotteryPool), 1);
+        console.log("Lottery deploy :", address(lottery));
 
-//         // Déploiement Bridge
-//         address ccipRouter = address(0xCCIP);
-//         GoldBridge goldBridge = new GoldBridge(ccipRouter, address(goldToken));
+        address goldAggregatorAddress = vm.envAddress("GOLD_AGGREGATOR_ADDRESS");
+        address ethAggregatorAddress  = vm.envAddress("ETH_AGGREGATOR_ADDRESS");
 
-//         vm.stopBroadcast();
-//     }
-// }
+         // Adresse du collecteur des frais administratifs (configurable)
+        address adminFeeCollector = vm.envAddress("ADMIN_FEE_COLLECTOR");
+
+        GoldenToken goldToken = new GoldenToken(
+            AggregatorV3Interface(goldAggregatorAddress),
+            AggregatorV3Interface(ethAggregatorAddress),
+            lottery,
+            adminFeeCollector
+        );
+
+        console.log("GoldToken deployed to :", address(goldToken));
+    }
+
+}

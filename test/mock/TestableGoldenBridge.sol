@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "../../src/GoldBridge.sol";
+import "../../src/GoldenBridge.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 
 /**
- * @title TestableGoldBridge
- * @notice Contrat de test qui étend `GoldBridge` pour exposer des fonctions internes à des fins de test.
+ * @title TestableGoldenBridge
+ * @notice A test contract that extends `GoldenBridge` to expose internal functions for testing.
  */
-contract TestableGoldBridge is GoldBridge {
+contract TestableGoldenBridge is GoldenBridge {
     /**
-     * @notice Constructeur qui initialise le TestableGoldBridge.
-     * @param _router Adresse du routeur CCIP.
-     * @param _goldToken Adresse du token Gold.
+     * @notice Constructor that initializes the TestableGoldenBridge contract.
+     * @param _router Address of the Chainlink CCIP router.
+     * @param _goldToken Address of the GoldToken contract.
      */
     constructor(
         address _router,
         address _goldToken
-    ) GoldBridge(_router, _goldToken) {}
+    ) GoldenBridge(_router, _goldToken) {}
 
     /**
      * @notice Fonction publique permettant de tester la réception des messages CCIP.
