@@ -10,11 +10,11 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @title GoldBridge
+ * @title GoldenBridge
  * @notice Contrat de pont (bridge) permettant de transferer des tokens Gold entre Ethereum et BSC
  * @dev Implemente Chainlink CCIP pour la messagerie cross-chain securisee
  */
-contract GoldBridge is CCIPReceiver, OwnableUpgradeable, UUPSUpgradeable {
+contract GoldenBridgeUUPS is CCIPReceiver, OwnableUpgradeable, UUPSUpgradeable {
 
         function testA() public {} // forge coverage ignore-file
 

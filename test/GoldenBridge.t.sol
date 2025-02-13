@@ -4,11 +4,11 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 import "./mock/MockERC20.sol";
 import "./mock/MockRouterClient.sol";
-import "./mock/TestableGoldBridge.sol";
+import "./mock/TestableGoldenBridge.sol";
 import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 
-contract GoldBridgeTest is Test {
-    TestableGoldBridge public goldBridge;
+contract GoldenBridgeTest is Test {
+    TestableGoldenBridge public goldBridge;
     MockRouterClient public mockRouter;
     MockERC20 public mockLinkToken;
     MockERC20 public mockGoldToken;
@@ -22,7 +22,7 @@ contract GoldBridgeTest is Test {
     uint256 public constant INITIAL_LINK_SUPPLY = 1000e18;
     uint256 public constant FEE = 10e18; // Fee fixé par le mockRouter
 
-    // Événement attendu (défini dans GoldBridge)
+    // Événement attendu (défini dans GoldenBridge)
     event BridgeSent(
         bytes32 indexed messageId,
         uint64 indexed destinationChainSelector,
@@ -43,14 +43,14 @@ contract GoldBridgeTest is Test {
         // Attribution de tokens Gold au user
         mockGoldToken.mint(user, INITIAL_GOLD_SUPPLY);
 
-        // Déploiement du contrat via TestableGoldBridge
-        goldBridge = new TestableGoldBridge(
+        // Déploiement du contrat via TestableGoldenBridge
+        goldBridge = new TestableGoldenBridge(
             address(mockRouter),
             address(mockLinkToken),
             address(mockGoldToken)
         );
 
-        // Attribution de tokens LINK au contrat GoldBridge pour couvrir les frais CCIP
+        // Attribution de tokens LINK au contrat GoldenBridge pour couvrir les frais CCIP
         mockLinkToken.mint(address(goldBridge), INITIAL_LINK_SUPPLY);
     }
 
@@ -58,7 +58,7 @@ contract GoldBridgeTest is Test {
     function testConstructorRevertsWithZeroRouter() public {
         // Le revert attendu provient d'un custom error "InvalidRouter(address)"
         vm.expectRevert(abi.encodeWithSignature("InvalidRouter(address)", address(0)));
-        new TestableGoldBridge(
+        new TestableGoldenBridge(
             address(0),
             address(mockLinkToken),
             address(mockGoldToken)
@@ -67,7 +67,7 @@ contract GoldBridgeTest is Test {
 
     function testConstructorRevertsWithZeroLinkToken() public {
         vm.expectRevert("Invalid LINK token address");
-        new TestableGoldBridge(
+        new TestableGoldenBridge(
             address(mockRouter),
             address(0),
             address(mockGoldToken)
@@ -76,7 +76,7 @@ contract GoldBridgeTest is Test {
 
     function testConstructorRevertsWithZeroGoldToken() public {
         vm.expectRevert("Invalid gold token address");
-        new TestableGoldBridge(
+        new TestableGoldenBridge(
             address(mockRouter),
             address(mockLinkToken),
             address(0)

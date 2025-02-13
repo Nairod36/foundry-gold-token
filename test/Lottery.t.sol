@@ -1,7 +1,8 @@
-pragma solidity ^0.8.28;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "../src/GoldToken.sol";
+import "../src/GoldenToken.sol";
 import "../src/LotteryPool.sol";
 import "./mock/TestableLottery.sol";
 import "./mock/MockAggregator.sol";
@@ -9,7 +10,7 @@ import "./mock/MockERC20.sol";
 import "./mock/MockRevertingReceiver.sol";
 
 contract FullTest is Test {
-    GoldToken public goldToken;
+    GoldenToken public goldToken;
     TestableLottery public lottery;
     LotteryPool public pool;
     
@@ -50,7 +51,7 @@ contract FullTest is Test {
         lottery = new TestableLottery(payable(address(pool)), 1);
         pool.transferOwnership(address(lottery));
         
-        goldToken = new GoldToken(
+        goldToken = new GoldenToken(
             mockGoldAggregator,
             mockEthAggregator,
             lottery,

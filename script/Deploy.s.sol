@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Script.sol";
-import "../src/GoldBridge.sol";
-import "../src/GoldToken.sol";
+import "../src/GoldenBridge.sol";
+import "../src/GoldenToken.sol";
 import "../src/Lottery.sol";
 import "../src/LotteryPool.sol";
 import "../test/mock/MockAggregator.sol";
@@ -30,7 +30,7 @@ contract Deploy is Script {
          // Adresse du collecteur des frais administratifs (configurable)
         address adminFeeCollector = vm.envAddress("ADMIN_FEE_COLLECTOR");
 
-        GoldToken goldToken = new GoldToken(
+        GoldenToken goldToken = new GoldenToken(
             AggregatorV3Interface(goldAggregatorAddress),
             AggregatorV3Interface(ethAggregatorAddress),
             lottery,

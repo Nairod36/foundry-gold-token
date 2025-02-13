@@ -2,17 +2,17 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "../src/GoldToken.sol";
+import "../src/GoldenToken.sol";
 import "../src/Lottery.sol";
 import './mock/MockRevertingReceiver.sol';
 import './mock/MockAggregator.sol';
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract GoldTokenTest is Test {
+contract GoldenTokenTest is Test {
 
-        function testA() public {} // forge coverage ignore-file
+    function testA() public {} // forge coverage ignore-file
 
-    GoldToken public goldToken;
+    GoldenToken public goldToken;
     Lottery public lottery;    
     MockAggregator public mockGoldAggregator;
     MockAggregator public mockEthAggregator;
@@ -32,9 +32,9 @@ contract GoldTokenTest is Test {
 
         lottery = new Lottery(payable(pool), 1);
 
-        goldToken = new GoldToken(mockGoldAggregator, mockEthAggregator, lottery, adminFeeCollector);
+        goldToken = new GoldenToken(mockGoldAggregator, mockEthAggregator, lottery, adminFeeCollector);
 
-        goldToken = new GoldToken(
+        goldToken = new GoldenToken(
             mockGoldAggregator,
             mockEthAggregator,
             lottery,
@@ -119,7 +119,7 @@ contract GoldTokenTest is Test {
 
     function testConstructorRevertInvalidGoldFeed() public {
         vm.expectRevert("Invalid gold feed address");
-        new GoldToken(
+        new GoldenToken(
             AggregatorV3Interface(address(0)),
             AggregatorV3Interface(address(mockEthAggregator)),
             lottery,
@@ -129,7 +129,7 @@ contract GoldTokenTest is Test {
 
     function testConstructorRevertInvalidEthFeed() public {
         vm.expectRevert("Invalid ETH feed address");
-        new GoldToken(
+        new GoldenToken(
             AggregatorV3Interface(address(mockGoldAggregator)),
             AggregatorV3Interface(address(0)),
             lottery,
@@ -139,7 +139,7 @@ contract GoldTokenTest is Test {
 
     function testConstructorRevertInvalidAdminFeeCollector() public {
         vm.expectRevert("Invalid admin fee collector address");
-        new GoldToken(
+        new GoldenToken(
             AggregatorV3Interface(address(mockGoldAggregator)),
             AggregatorV3Interface(address(mockEthAggregator)),
             lottery,

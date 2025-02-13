@@ -16,7 +16,7 @@ import "./Lottery.sol";
  * - 50% of the fee goes to the lottery contract (which uses Chainlink VRF).
  * - 50% goes to the admin fee collector address.
  */
-contract GoldToken is ERC20, Ownable, ReentrancyGuard {
+contract GoldenToken is ERC20, Ownable, ReentrancyGuard {
     /// @notice Chainlink price feeds for XAU/USD (gold) and ETH/USD
     AggregatorV3Interface public goldFeed;
     AggregatorV3Interface public ethFeed;
