@@ -14,8 +14,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 contract GoldBridgeBSC is CCIPReceiver, Ownable {
 
-        function testA() public {} // forge coverage ignore-file
-
     IRouterClient public router;
     IERC20 public goldToken;
 
