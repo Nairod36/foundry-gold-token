@@ -2,7 +2,9 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/LotteryPool.sol";
-import "./mock/mockLottery.sol";
+import "./mock/MockLottery.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 
 contract LotteryPoolTest is Test {
     LotteryPool public pool;
@@ -15,11 +17,10 @@ contract LotteryPoolTest is Test {
 
     function setUp() public {
         pool = new LotteryPool();
-        // Transférer la propriété à un compte EOA (ex : 0x3) pour éviter que le fallback du contrat de test ne rejette l'ETH
+        // Transfer ownership to an EOA to avoid test contract's fallback rejecting ETH
         pool.transferOwnership(address(0x3));
         owner = address(0x3);
     }
-
 
     function testDeposit() public {
         uint256 depositAmount = 1 ether;
@@ -62,26 +63,39 @@ contract LotteryPoolTest is Test {
         assertEq(deposited, depositAmount, "Receive deposit amount mismatch");
     }
 
-    // function testWithdrawByLottery() public {
-    //     // Déployer un mock Lottery qui accepte de l'ETH
-    //     MockLottery mockLottery = new MockLottery();
+    function testWithdrawByOwner() public {
+        uint256 depositAmount = 1 ether;
+        vm.deal(user1, depositAmount);
+        vm.prank(user1);
+        pool.deposit{value: depositAmount}();
         
-    //     vm.prank(owner);
-    //     pool.setLottery(address(mockLottery));
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit Withdrawn(owner, depositAmount);
+        pool.withdraw(depositAmount);
         
-    //     uint256 depositAmount = 1 ether;
-    //     vm.deal(user1, depositAmount);
-    //     vm.prank(user1);
-    //     pool.deposit{value: depositAmount}();
+        assertEq(address(pool).balance, 0, "Pool balance should be zero after withdrawal");
+    }
+
+    function testWithdrawByLottery() public {
+        // Deploy a mock Lottery that can receive ETH
+        MockLottery mockLottery = new MockLottery();
         
-    //     vm.prank(address(mockLottery));
-    //     vm.expectEmit(false, false, false, true);
-    //     emit Withdrawn(address(mockLottery), depositAmount);
-    //     pool.withdraw(depositAmount);
+        vm.prank(owner);
+        pool.setLottery(address(mockLottery));
         
-    //     uint256 balAfter = address(pool).balance;
-    //     assertEq(balAfter, 0, "Pool balance should be zero after withdrawal by lottery");
-    // }
+        uint256 depositAmount = 1 ether;
+        vm.deal(user1, depositAmount);
+        vm.prank(user1);
+        pool.deposit{value: depositAmount}();
+        
+        vm.prank(address(mockLottery));
+        vm.expectEmit(false, false, false, true);
+        emit Withdrawn(address(mockLottery), depositAmount);
+        pool.withdraw(depositAmount);
+        
+        assertEq(address(pool).balance, 0, "Pool balance should be zero after withdrawal by lottery");
+    }
 
     function testWithdrawNotAuthorized() public {
         uint256 depositAmount = 1 ether;
@@ -100,9 +114,15 @@ contract LotteryPoolTest is Test {
         vm.prank(user1);
         pool.deposit{value: depositAmount}();
         
-        vm.prank(pool.owner());
+        vm.prank(owner);
         vm.expectRevert("Insufficient balance");
         pool.withdraw(depositAmount + 1 ether);
+    }
+
+    function testWithdrawZeroAmount() public {
+        vm.prank(owner);
+        vm.expectRevert("Amount must be greater than 0");
+        pool.withdraw(0);
     }
 
     function testGetDepositors() public {
@@ -135,8 +155,7 @@ contract LotteryPoolTest is Test {
         assertEq(user2Total, deposit2, "user2 total deposit mismatch");
     }
 
-
-    function testGetDepositorsEmpty() view public {
+    function testGetDepositorsEmpty() public view {
         (address[] memory depositors, uint256[] memory amounts) = pool.getDepositors();
         assertEq(depositors.length, 0, "Expected no depositors");
         assertEq(amounts.length, 0, "Expected no amounts");
@@ -152,11 +171,37 @@ contract LotteryPoolTest is Test {
         assertEq(deposited, 0, "Deposits for user2 should remain 0");
     }
 
+    function testFallbackFunction() public {
+        uint256 depositAmount = 0.5 ether;
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        (bool success, ) = address(pool).call{value: depositAmount}(hex"1234");
+        assertTrue(success, "Fallback function failed");
+        
+        uint256 deposited = pool.deposits(user2);
+        assertEq(deposited, depositAmount, "Fallback deposit amount mismatch");
+    }
+
+    function testFallbackZeroValue() public {
+        vm.prank(user2);
+        (bool success, ) = address(pool).call{value: 0}(hex"1234");
+        assertTrue(success, "Fallback with 0 ETH should succeed");
+        uint256 deposited = pool.deposits(user2);
+        assertEq(deposited, 0, "Deposits for user2 should remain 0");
+    }
+
     function testSetLottery() public {
         address lotteryAddress = address(0xABC);
         vm.prank(owner);
         pool.setLottery(lotteryAddress);
         assertEq(pool.lottery(), lotteryAddress, "Lottery address not set correctly");
+    }
+
+    function testSetLotteryNotOwner() public {
+        address lotteryAddress = address(0xABC);
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1));
+        pool.setLottery(lotteryAddress);
     }
 
     function testBalance() public {
@@ -165,8 +210,6 @@ contract LotteryPoolTest is Test {
         vm.prank(user1);
         pool.deposit{value: depositAmount}();
         uint256 bal = pool.balance();
-        // On définit ici la tolérance observée
-        uint256 tolerance = 577021548053172;
-        assertApproxEqAbs(bal, depositAmount, tolerance, "Balance function returned incorrect amount");
+        assertEq(bal, depositAmount, "Balance function returned incorrect amount");
     }
 }
