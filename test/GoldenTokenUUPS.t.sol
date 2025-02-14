@@ -40,7 +40,7 @@ contract GoldenTokenUUPSTest is Test {
         mockEthAggregator = new MockAggregator(1500, block.timestamp, 1, 18);
         pool = new LotteryPool();
 
-        lottery = new Lottery(payable(pool), 1);
+        lottery = new Lottery(payable(address(pool)), 1);
 
         // Deploy the implementation and the proxy
         GoldenTokenUUPS implementation = new GoldenTokenUUPS();

@@ -12,7 +12,7 @@ import "../test/mock/MockVRFCoordinatorV2Plus.sol";
 
 contract Deploy is Script {
 
-            function testA() public {} // forge coverage ignore-file
+    function testA() public {} // forge coverage ignore-file
 
     function run() external {
         // Déploiement des mocks pour les agrégateurs et le routeur CCIP
@@ -21,10 +21,10 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Déploiement du LotteryPool
-        LotteryPool lotteryPool = new LotteryPool();
-        console.log("LotteryPool deploy on :", address(lotteryPool));
+        LotteryPool pool = new LotteryPool();
+        console.log("LotteryPool deploy on :", address(pool));
 
-        Lottery lottery = new Lottery(payable(lotteryPool), 1);
+        Lottery lottery = new Lottery(payable(pool), 1);
         console.log("Lottery deploy :", address(lottery));
 
         address goldAggregatorAddress = vm.envAddress("GOLD_AGGREGATOR_ADDRESS");

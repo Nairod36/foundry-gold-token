@@ -1,0 +1,206 @@
+
+[⠒] Compiling...
+No files changed, compilation skipped
+Traces:
+  [7252669] Deploy::run()
+    ├─ [0] VM::envUint("PRIVATE_KEY") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [0] VM::startBroadcast(<pk>)
+    │   └─ ← [Return]
+    ├─ [891048] → new LotteryPool@0x0245FD297320C58aF7cFeb28274fe329FB26e963
+    │   ├─ emit OwnershipTransferred(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7)
+    │   └─ ← [Return] 4331 bytes of code
+    ├─ [0] console::log("LotteryPool deployed to:", LotteryPool: [0x0245FD297320C58aF7cFeb28274fe329FB26e963]) [staticcall]
+    │   └─ ← [Stop]
+    ├─ [2694671] → new Lottery@0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A
+    │   └─ ← [Return] 12786 bytes of code
+    ├─ [0] console::log("Lottery deployed to:", Lottery: [0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A]) [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] VM::envAddress("GOLD_AGGREGATOR_ADDRESS") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [0] VM::envAddress("ETH_AGGREGATOR_ADDRESS") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [0] VM::envAddress("ADMIN_FEE_COLLECTOR") [staticcall]
+    │   └─ ← [Return] <env var value>
+    ├─ [3083289] → new GoldenTokenUUPS@0x0bEcB48a976c06ff2eB123B2052377516288D66a
+    │   ├─ emit Initialized(version: 18446744073709551615 [1.844e19])
+    │   └─ ← [Return] 15280 bytes of code
+    ├─ [276947] → new ERC1967Proxy@0x9D616a757400b9235B2509c7861C5A868016276F
+    │   ├─ emit Upgraded(implementation: GoldenTokenUUPS: [0x0bEcB48a976c06ff2eB123B2052377516288D66a])
+    │   ├─ [208878] GoldenTokenUUPS::initialize(EACAggregatorProxy: [0xC5981F461d74c46eB4b0CF3f4Ec79f025573B0Ea], EACAggregatorProxy: [0x694AA1769357215DE4FAC081bf1f309aDC325306], Lottery: [0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A], 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7) [delegatecall]
+    │   │   ├─ emit OwnershipTransferred(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7)
+    │   │   ├─ emit Initialized(version: 1)
+    │   │   └─ ← [Stop]
+    │   └─ ← [Return] 212 bytes of code
+    ├─ [0] console::log("Minting tokens...") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [119932] ERC1967Proxy::fallback{value: 1000000000000000000}()
+    │   ├─ [119464] GoldenTokenUUPS::mint{value: 1000000000000000000}() [delegatecall]
+    │   │   ├─ [16043] EACAggregatorProxy::latestRoundData() [staticcall]
+    │   │   │   ├─ [7612] AccessControlledOffchainAggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 20278 [2.027e4], 270056000000 [2.7e11], 1739542452 [1.739e9], 1739542452 [1.739e9], 20278 [2.027e4]
+    │   │   │   └─ ← [Return] 18446744073709571894 [1.844e19], 270056000000 [2.7e11], 1739542452 [1.739e9], 1739542452 [1.739e9], 18446744073709571894 [1.844e19]
+    │   │   ├─ [16043] EACAggregatorProxy::latestRoundData() [staticcall]
+    │   │   │   ├─ [7612] AccessControlledOffchainAggregator::latestRoundData() [staticcall]
+    │   │   │   │   └─ ← [Return] 22888 [2.288e4], 291970873500 [2.919e11], 1739540676 [1.739e9], 1739540676 [1.739e9], 22888 [2.288e4]
+    │   │   │   └─ ← [Return] 18446744073709574504 [1.844e19], 291970873500 [2.919e11], 1739540676 [1.739e9], 1739540676 [1.739e9], 18446744073709574504 [1.844e19]
+    │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, value: 878694497586588890 [8.786e17])
+    │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: Lottery: [0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A], value: 23123539410173391 [2.312e16])
+    │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, value: 23123539410173391 [2.312e16])
+    │   │   ├─ emit Minted(minter: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, ethAmount: 1000000000000000000 [1e18], netTokenAmount: 878694497586588890 [8.786e17])
+    │   │   └─ ← [Stop]
+    │   └─ ← [Return]
+    ├─ [0] console::log("Mint successful") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] console::log("Starting the lottery...") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [26575] Lottery::startLottery()
+    │   ├─ emit LotteryStarted(timestamp: 1739542584 [1.739e9])
+    │   └─ ← [Stop]
+    ├─ [0] console::log("Lottery started") [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] VM::stopBroadcast()
+    │   └─ ← [Return]
+    └─ ← [Stop]
+
+
+Script ran successfully.
+
+== Logs ==
+  LotteryPool deployed to: 0x0245FD297320C58aF7cFeb28274fe329FB26e963
+  Lottery deployed to: 0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A
+  Minting tokens...
+  Mint successful
+  Starting the lottery...
+  Lottery started
+
+## Setting up 1 EVM.
+==========================
+Simulated On-chain Traces:
+
+  [891048] → new LotteryPool@0x0245FD297320C58aF7cFeb28274fe329FB26e963
+    ├─ emit OwnershipTransferred(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7)
+    └─ ← [Return] 4331 bytes of code
+
+  [2694671] → new Lottery@0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A
+    └─ ← [Return] 12786 bytes of code
+
+  [3083289] → new GoldenTokenUUPS@0x0bEcB48a976c06ff2eB123B2052377516288D66a
+    ├─ emit Initialized(version: 18446744073709551615 [1.844e19])
+    └─ ← [Return] 15280 bytes of code
+
+  [279447] → new ERC1967Proxy@0x9D616a757400b9235B2509c7861C5A868016276F
+    ├─ emit Upgraded(implementation: GoldenTokenUUPS: [0x0bEcB48a976c06ff2eB123B2052377516288D66a])
+    ├─ [208878] GoldenTokenUUPS::initialize(EACAggregatorProxy: [0xC5981F461d74c46eB4b0CF3f4Ec79f025573B0Ea], EACAggregatorProxy: [0x694AA1769357215DE4FAC081bf1f309aDC325306], Lottery: [0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A], 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7) [delegatecall]
+    │   ├─ emit OwnershipTransferred(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7)
+    │   ├─ emit Initialized(version: 1)
+    │   └─ ← [Stop]
+    └─ ← [Return] 212 bytes of code
+
+  [137232] ERC1967Proxy::fallback{value: 1000000000000000000}()
+    ├─ [132264] GoldenTokenUUPS::mint{value: 1000000000000000000}() [delegatecall]
+    │   ├─ [16043] EACAggregatorProxy::latestRoundData() [staticcall]
+    │   │   ├─ [7612] AccessControlledOffchainAggregator::latestRoundData() [staticcall]
+    │   │   │   └─ ← [Return] 20278 [2.027e4], 270056000000 [2.7e11], 1739542452 [1.739e9], 1739542452 [1.739e9], 20278 [2.027e4]
+    │   │   └─ ← [Return] 18446744073709571894 [1.844e19], 270056000000 [2.7e11], 1739542452 [1.739e9], 1739542452 [1.739e9], 18446744073709571894 [1.844e19]
+    │   ├─ [16043] EACAggregatorProxy::latestRoundData() [staticcall]
+    │   │   ├─ [7612] AccessControlledOffchainAggregator::latestRoundData() [staticcall]
+    │   │   │   └─ ← [Return] 22888 [2.288e4], 291970873500 [2.919e11], 1739540676 [1.739e9], 1739540676 [1.739e9], 22888 [2.288e4]
+    │   │   └─ ← [Return] 18446744073709574504 [1.844e19], 291970873500 [2.919e11], 1739540676 [1.739e9], 1739540676 [1.739e9], 18446744073709574504 [1.844e19]
+    │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, value: 878694497586588890 [8.786e17])
+    │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: Lottery: [0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A], value: 23123539410173391 [2.312e16])
+    │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, value: 23123539410173391 [2.312e16])
+    │   ├─ emit Minted(minter: 0xBABCaBEA9d51d504a787EbdB78B331B63D05c8D7, ethAmount: 1000000000000000000 [1e18], netTokenAmount: 878694497586588890 [8.786e17])
+    │   └─ ← [Stop]
+    └─ ← [Return]
+
+  [28575] Lottery::startLottery()
+    ├─ emit LotteryStarted(timestamp: 1739542584 [1.739e9])
+    └─ ← [Stop]
+
+
+==========================
+
+Chain 11155111
+
+Estimated gas price: 5.432589195 gwei
+
+Estimated total gas used for script: 10315459
+
+Estimated amount required: 0.056039651104865505 ETH
+
+==========================
+
+##### sepolia
+✅  [Success] Hash: 0x560150b4c16ad77acdc58ff830827dcd6cb91b6999ea447fc336fdd446f9f8f7
+Contract Address: 0x0245FD297320C58aF7cFeb28274fe329FB26e963
+Block: 7706417
+Paid: 0.002570747117477312 ETH (1016656 gas * 2.528630252 gwei)
+
+
+##### sepolia
+✅  [Success] Hash: 0xc8ddf158fba47dab3ba2a694210753dca98b222c97c189d718b4bc54dfc443ab
+Contract Address: 0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A
+Block: 7706417
+Paid: 0.007509301074297172 ETH (2969711 gas * 2.528630252 gwei)
+
+
+##### sepolia
+✅  [Success] Hash: 0xe87aa5c125fd67e3687932d1ec09f90571939d32a6096f64fa62f07a1686bb57
+Block: 7706417
+Paid: 0.000393191889664992 ETH (155496 gas * 2.528630252 gwei)
+
+
+##### sepolia
+✅  [Success] Hash: 0xe1e24500d044b3b311f896160e33d3ef6e55c465e74c83bd2eb0e26719457bdc
+Block: 7706417
+Paid: 0.000125518677079028 ETH (49639 gas * 2.528630252 gwei)
+
+                                                                                                                                                                                                                                                                         
+##### sepolia                                                                                                                                                                                                                                                            
+✅  [Success] Hash: 0xda22a92fa96b5a32237c674aab232d4fa194072f06744acaf2ca0b5427c6c0a2                                                                                                                                                                                   
+Contract Address: 0x0bEcB48a976c06ff2eB123B2052377516288D66a                                                                                                                                                                                                             
+Block: 7706417
+Paid: 0.008523221118223124 ETH (3370687 gas * 2.528630252 gwei)
+
+                                                                                                                                                                                                                                                                         
+##### sepolia                                                                                                                                                                                                                                                            
+✅  [Success] Hash: 0x9b1c4b6297f63c637869383a5721c191ee9837454c8704b4c861a77c43f256f7                                                                                                                                                                                   
+Contract Address: 0x9D616a757400b9235B2509c7861C5A868016276F
+Block: 7706417
+Paid: 0.000910208274140172 ETH (359961 gas * 2.528630252 gwei)
+
+✅ Sequence #1 on sepolia | Total Paid: 0.0200321881508818 ETH (7922150 gas * avg 2.528630252 gwei)                                                                                                                                                                      
+                                                                                                                                                                                                                                                                         
+                                                                                                                                                                                                                                                                         
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+##
+Start verification for (4) contracts
+Start verifying contract `0x0245FD297320C58aF7cFeb28274fe329FB26e963` deployed on sepolia
+Compiler version: 0.8.28
+
+Submitting verification for [src/LotteryPool.sol:LotteryPool] 0x0245FD297320C58aF7cFeb28274fe329FB26e963.
+Submitted contract for verification:
+        Response: `OK`
+        GUID: `quh7qfvvxv8ygu9xak2aym9cdzbp2fcwdpkbg6patf9dad5lvs`
+        URL: https://sepolia.etherscan.io/address/0x0245fd297320c58af7cfeb28274fe329fb26e963
+Contract verification status:
+Response: `OK`
+Details: `Pass - Verified`
+Contract successfully verified
+Start verifying contract `0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A` deployed on sepolia
+Compiler version: 0.8.28
+Constructor args: 0000000000000000000000000245fd297320c58af7cfeb28274fe329fb26e9630000000000000000000000000000000000000000000000000000000000000001
+
+Submitting verification for [src/Lottery.sol:Lottery] 0xec1777aed6Ee485bB4502b5ae0cd1B5363c9861A.
+Submitted contract for verification:
+        Response: `OK`
+        GUID: `sdbybgvtg3sqcjwfnuzp1xmjyesymxxmsuhhdvq4riytpb1svs`
+        URL: https://sepolia.etherscan.io/address/0xec1777aed6ee485bb4502b5ae0cd1b5363c9861a
+Contract verification status:
+Response: `OK`
+Details: `Pass - Verified`
+Contract successfully verified
+Start verifying contract `0x0bEc

@@ -2,12 +2,13 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title LotteryPool
  * @notice A smart contract that manages the prize pool for the lottery, allowing deposits and withdrawals.
  */
-contract LotteryPool is Ownable {
+contract LotteryPool is Ownable, ReentrancyGuard {
     /// @notice Tracks deposits made by each address
     mapping(address => uint256) public deposits;
     /// @notice List of depositors who have contributed to the pool
@@ -46,11 +47,18 @@ contract LotteryPool is Ownable {
      */
     function deposit() external payable {
         require(msg.value > 0, "Amount must be greater than 0");
-        if (deposits[msg.sender] == 0) {
-            depositors.push(msg.sender);
+        _handleDeposit(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Internal function to handle deposit logic.
+     */
+    function _handleDeposit(address sender, uint256 amount) internal {
+        if (deposits[sender] == 0) {
+            depositors.push(sender);
         }
-        deposits[msg.sender] += msg.value;
-        emit Deposited(msg.sender, msg.value);
+        deposits[sender] += amount;
+        emit Deposited(sender, amount);
     }
 
     /**
@@ -62,7 +70,8 @@ contract LotteryPool is Ownable {
         require(amount > 0, "Amount must be greater than 0");
         require(address(this).balance >= amount, "Insufficient balance");
         require(msg.sender == owner() || msg.sender == lottery, "Not authorized");
-        payable(msg.sender).transfer(amount);
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Transfer failed");
         emit Withdrawn(msg.sender, amount);
     }
 
@@ -82,15 +91,22 @@ contract LotteryPool is Ownable {
     }
 
     /**
-     * @notice Accepts direct ETH transfers and registers the sender as a depositor.
+     * @notice Allows the contract to receive ETH directly.
+     * If ETH is sent without data, it will be handled like a deposit if the amount is > 0.
      */
     receive() external payable {
         if (msg.value > 0) {
-            if (deposits[msg.sender] == 0) {
-                depositors.push(msg.sender);
-            }
-            deposits[msg.sender] += msg.value;
-            emit Deposited(msg.sender, msg.value);
+            _handleDeposit(msg.sender, msg.value);
+        }
+        // Si msg.value == 0, la transaction réussit sans modifier l'état
+    }
+
+    /**
+     * @notice Fallback function to handle calls with unknown data.
+     */
+    fallback() external payable {
+        if (msg.value > 0) {
+            _handleDeposit(msg.sender, msg.value);
         }
     }
 }

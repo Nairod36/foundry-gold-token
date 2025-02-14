@@ -6,14 +6,13 @@ import "../src/GoldenBridge.sol";
 import "../src/GoldenTokenUUPS.sol";
 import "../src/Lottery.sol";
 import "../src/LotteryPool.sol";
-// import "../test/mock/MockAggregator.sol";
 import "../test/mock/MockRouterClient.sol";
 import "../test/mock/MockVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Deploy is Script {
 
-            function testA() public {} // forge coverage ignore-file
+    function testA() public {} // forge coverage ignore-file
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -21,16 +20,17 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Déploiement du LotteryPool
-        LotteryPool lotteryPool = new LotteryPool();
+        LotteryPool pool = new LotteryPool();
+        console.log("LotteryPool deployed to:", address(pool));
 
-        Lottery lottery = new Lottery(payable(lotteryPool), 1);
+        Lottery lottery = new Lottery(payable(pool), 1);
 
+        // Récupération des adresses des feeds Chainlink et de l'admin
         address goldAggregatorAddress = vm.envAddress("GOLD_AGGREGATOR_ADDRESS");
         address ethAggregatorAddress  = vm.envAddress("ETH_AGGREGATOR_ADDRESS");
-
         address adminFeeCollector = vm.envAddress("ADMIN_FEE_COLLECTOR");
-        
-         // Déploiement de l'implémentation de GoldToken
+
+        // Déploiement de l'implémentation de GoldToken
         GoldenTokenUUPS goldenTokenImpl = new GoldenTokenUUPS();
 
         bytes memory initData = abi.encodeWithSelector(
@@ -46,11 +46,22 @@ contract Deploy is Script {
             initData
         );
 
-        // On peut interagir avec GoldenTokenUUPS via l'adresse du proxy which got an address payable
-        console.log("GoldenToken deployed to :", address(goldenTokenProxy));
         address payable goldenTokenAddress = payable(address(goldenTokenProxy));
 
+        // Utilisez l'instance du proxy pour appeler mint
         GoldenTokenUUPS goldenToken = GoldenTokenUUPS(goldenTokenAddress);
-        goldenToken.initialize(AggregatorV3Interface(goldAggregatorAddress), AggregatorV3Interface(ethAggregatorAddress), ILottery(address(lottery)), adminFeeCollector);
+
+
+        console.log("Minting tokens...");
+        uint256 ethToSend = 1 ether; // Modifier selon les besoins
+        goldenToken.mint{value: ethToSend}();
+        console.log("Mint successful");
+
+        // Démarrer la loterie
+        console.log("Starting the lottery...");
+        lottery.startLottery();
+        console.log("Lottery started");
+
+        vm.stopBroadcast();
     }
 }
