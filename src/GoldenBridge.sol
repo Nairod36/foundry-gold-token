@@ -6,13 +6,17 @@ import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "@chainlink/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title GoldenBridge
- * @notice Bridge contract enabling the transfer of Gold tokens between Ethereum and BSC.
- * @dev Implements Chainlink CCIP for secure cross-chain messaging.
+ * @notice Bridge contract enabling the transfer of Gold tokens from Ethereum to BSC.
+ * @dev Implements Chainlink CCIP for secure cross-chain messaging. Fees are paid in ETH.
+ *      SafeERC20 is used to ensure secure interactions with the Gold token.
  */
 contract GoldenBridge is CCIPReceiver, Ownable {
+    using SafeERC20 for IERC20;
+
     IRouterClient public router;
     IERC20 public goldToken;
 
@@ -52,6 +56,7 @@ contract GoldenBridge is CCIPReceiver, Ownable {
     /**
      * @notice Sends Gold tokens to BSC.
      * @dev Fees are paid in ETH (via msg.value). The feeToken field is set to address(0).
+     *      This implementation uses SafeERC20 to ensure secure token transfers.
      * @param amount Number of tokens to send.
      * @param receiver Recipient address on BSC.
      * @return messageId Unique identifier of the CCIP message.
@@ -62,11 +67,11 @@ contract GoldenBridge is CCIPReceiver, Ownable {
     ) external payable returns (bytes32 messageId) {
         require(goldToken.balanceOf(msg.sender) >= amount, "Insufficient GLD balance");
 
-        // Transfers Gold tokens from the sender to this contract.
-        require(goldToken.transferFrom(msg.sender, address(this), amount), "Gold token transfer failed");
+        // Securely transfer Gold tokens from the sender to this contract.
+        goldToken.safeTransferFrom(msg.sender, address(this), amount);
         
-        // Approves the router to spend the Gold tokens.
-        require(goldToken.approve(address(router), amount), "Gold token approval failed");
+        // Securely approve the router to spend the Gold tokens.
+        goldToken.forceApprove(address(router), amount);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({
@@ -74,7 +79,7 @@ contract GoldenBridge is CCIPReceiver, Ownable {
             amount: amount
         });
 
-        // Here, feeToken is address(0), indicating that fees are paid in ETH.
+        // feeToken is set to address(0), meaning fees are paid in ETH.
         Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
             receiver: abi.encode(receiver),
             data: abi.encode(amount),
@@ -114,10 +119,8 @@ contract GoldenBridge is CCIPReceiver, Ownable {
         address sender = abi.decode(any2EvmMessage.sender, (address));
         uint256 amount = abi.decode(any2EvmMessage.data, (uint256));
 
-        require(
-            goldToken.transfer(sender, amount),
-            "Token transfer to recipient failed"
-        );
+        // Securely transfer Gold tokens to the recipient.
+        goldToken.safeTransfer(sender, amount);
 
         emit BridgeReceived(any2EvmMessage.messageId, any2EvmMessage.sourceChainSelector, sender, amount);
     }

@@ -6,6 +6,7 @@ import {Client} from "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "@chainlink/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title GoldBridgeBSC
@@ -13,11 +14,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Implements Chainlink CCIP for secure cross-chain messaging. Fees are paid in BNB (native token).
  */
 contract GoldBridgeBSC is CCIPReceiver, Ownable {
+    using SafeERC20 for IERC20;
 
     IRouterClient public router;
     IERC20 public goldToken;
 
-    /// @notice Chain selector for Ethereum (e.g., 1)
+    /// @notice Chain selector for Ethereum (for example, 1)
     uint64 public constant ETH_CHAIN_SELECTOR = 1;
     
     event BridgeSent(
@@ -38,7 +40,7 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     /**
      * @notice Initializes the contract with the required addresses.
      * @param _router Address of the CCIP router.
-     * @param _goldToken Address of the Gold token (on BSC).
+     * @param _goldToken Address of the Gold token on BSC.
      */
     constructor(
         address _router,
@@ -52,7 +54,7 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     
     /**
      * @notice Allows a user to bridge their Gold tokens from BSC to Ethereum.
-     * @dev Fees are paid in BNB (via msg.value), and feeToken is set to address(0).
+     * @dev Fees are paid in BNB (via msg.value) and feeToken is set to address(0).
      * @param amount Number of tokens to send.
      * @param receiver Recipient address on Ethereum.
      * @return messageId Unique identifier of the CCIP message.
@@ -63,8 +65,10 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     ) external payable returns (bytes32 messageId) {
         require(goldToken.balanceOf(msg.sender) >= amount, "Insufficient token balance");
 
-        require(goldToken.transferFrom(msg.sender, address(this), amount), "Token transfer failed");
-        require(goldToken.approve(address(router), amount), "Token approval failed");
+        // Use SafeERC20 for secure token transferFrom.
+        goldToken.safeTransferFrom(msg.sender, address(this), amount);
+        // Use SafeERC20 for secure approval.
+        goldToken.forceApprove(address(router), amount);
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({
@@ -72,7 +76,7 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
             amount: amount
         });
         
-        // feeToken is set to address(0) to indicate that fees are paid in BNB.
+        // feeToken is set to address(0) indicating that fees are paid in BNB.
         Client.EVM2AnyMessage memory evmMsg = Client.EVM2AnyMessage({
             receiver: abi.encode(receiver),
             data: abi.encode(amount),
@@ -93,8 +97,8 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     }
     
     /**
-     * @notice Handles the reception of CCIP messages (to bridge tokens from Ethereum to BSC).
-     * @dev Transfers Gold tokens to the recipient specified in the message.
+     * @notice Handles the reception of CCIP messages (for bridging tokens from Ethereum to BSC).
+     * @dev Transfers the Gold tokens to the recipient specified in the message.
      * @param any2EvmMessage Received CCIP message.
      */
     function _ccipReceive(
@@ -106,7 +110,7 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
         );
         address sender = abi.decode(any2EvmMessage.sender, (address));
         uint256 amount = abi.decode(any2EvmMessage.data, (uint256));
-        require(goldToken.transfer(sender, amount), "Transfer to recipient failed");
+        goldToken.safeTransfer(sender, amount);
         emit BridgeReceived(any2EvmMessage.messageId, any2EvmMessage.sourceChainSelector, sender, amount);
     }
 }
