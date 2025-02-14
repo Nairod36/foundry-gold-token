@@ -94,6 +94,7 @@ contract FullTest is Test {
         vm.prank(user1);
         vm.expectRevert(bytes("Lottery not started"));
         (bool success, ) = address(lottery).call{value: 1 ether}("");
+        require(success, "Call to lottery contract failed");
     }
     
     function testReceiveFromLiquidityPool() public {
@@ -357,7 +358,7 @@ contract FullTest is Test {
         assertEq(players[1], user2, "Second player should be user2");
     }
     
-    function testGetLotteryResultEmpty() public {
+    function testGetLotteryResultEmpty() view public {
         uint256[3] memory result = lottery.getLotteryResult(user);
         assertEq(result[0], 0, "Expected zero ticket for element 0");
         assertEq(result[1], 0, "Expected zero ticket for element 1");
@@ -401,4 +402,123 @@ contract FullTest is Test {
         vm.expectRevert("Prize transfer failed");
         lottery.finalizeLottery();
     }
+
+    function testReceiveRevertNoEthSent() public {
+        lottery.startLottery();
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        vm.expectRevert("No ETH sent");
+        (bool success, ) = address(lottery).call{value: 0}("");
+        require(success, "Call to lottery contract failed");
+    }
+    
+    function testDuplicateParticipationRevert() public {
+        lottery.startLottery();
+        vm.deal(user, 2 ether);
+        vm.mockCall(
+            address(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B),
+            bytes(""),
+            abi.encode(uint256(1))
+        );
+        vm.prank(user);
+        (bool success, ) = address(lottery).call{value: 1 ether}("");
+        require(success, "First participation failed");
+        vm.prank(user);
+        vm.expectRevert("Already entered");
+        (bool success2, ) = address(lottery).call{value: 1 ether}("");
+        require(success2, "Second participation failed");
+    }
+    
+    function testFinalizeLotteryRevertParticipantTicketNotFulfilled() public {
+        lottery.startLottery();
+        // L'utilisateur participe sans que son ticket soit rempli
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        (bool success, ) = address(lottery).call{value: 1 ether}("");
+        require(success, "Participation failed");
+        
+        // Remplir le ticket cible
+        vm.mockCall(
+            address(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B),
+            bytes(""),
+            abi.encode(uint256(2))
+        );
+        vm.prank(admin);
+        lottery.requestTargetTicket();
+        uint256[] memory targetWords = new uint256[](1);
+        targetWords[0] = 5555;
+        vm.prank(admin);
+        lottery.testSimulateFulfillRandomWords(2, targetWords);
+        
+        vm.prank(admin);
+        vm.expectRevert("Ticket not fulfilled for player");
+        lottery.finalizeLottery();
+    }
+    
+    function testFulfillRandomWordsUnknownRoller() public {
+        uint256[] memory randomWords = new uint256[](1);
+        randomWords[0] = 9999;
+        vm.prank(admin);
+        vm.expectRevert("Unknown roller");
+        lottery.testSimulateFulfillRandomWords(999, randomWords);
+    }
+    
+    function testFulfillRandomWordsAlreadyRolled() public {
+        lottery.startLottery();
+        vm.deal(user, 1 ether);
+        vm.mockCall(
+            address(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B),
+            bytes(""),
+            abi.encode(uint256(1))
+        );
+        vm.prank(user);
+        (bool success, ) = address(lottery).call{value: 1 ether}("");
+        require(success, "Participation failed");
+        
+        uint256[] memory randomWords = new uint256[](1);
+        randomWords[0] = 1010;
+        vm.prank(admin);
+        lottery.testSimulateFulfillRandomWords(1, randomWords);
+        
+        // Un second appel avec le même requestId doit échouer
+        vm.prank(admin);
+        vm.expectRevert("Already rolled");
+        lottery.testSimulateFulfillRandomWords(1, randomWords);
+    }
+
+     function testRequestTargetTicketAlreadyRequested() public {
+        lottery.startLottery();
+        
+        vm.mockCall(
+            address(0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B),
+            bytes(""),
+            abi.encode(uint256(10))
+        );
+        vm.prank(admin);
+        lottery.requestTargetTicket();
+        
+        // Simulate fulfillment for the target ticket.
+        uint256[] memory randWords = new uint256[](1);
+        randWords[0] = 7777;
+        vm.prank(admin);
+        lottery.testSimulateFulfillRandomWords(10, randWords);
+        
+        vm.prank(admin);
+        vm.expectRevert("Target ticket already requested");
+        lottery.requestTargetTicket();
+    }
+    
+    function testRequestTargetTicketNonOwner() public {
+        lottery.startLottery();
+        vm.prank(user);
+        vm.expectRevert("Only callable by owner");
+        lottery.requestTargetTicket();
+    }
+    
+    function testStartLotteryNonOwner() public {
+        vm.prank(user);
+        vm.expectRevert("Only callable by owner");
+        lottery.startLottery();
+    }
+    
 }

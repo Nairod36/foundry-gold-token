@@ -23,6 +23,17 @@ contract MockRevertingReceiver {
         shouldRevert = _value;
     }
 
+
+    /**
+     * @notice A placeholder function for testing purposes.
+     */
+    function burn(address tokenAddress, uint256 amount) external {
+        (bool success, bytes memory data) = tokenAddress.call(
+            abi.encodeWithSignature("burn(uint256)", amount)
+        );
+        require(success, string(data));
+    }
+
     /**
      * @notice Fallback function that rejects ETH transfers if `shouldRevert` is set to true.
      */

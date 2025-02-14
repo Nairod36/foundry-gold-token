@@ -51,5 +51,6 @@ contract Deploy is Script {
         address payable goldenTokenAddress = payable(address(goldenTokenProxy));
 
         GoldenTokenUUPS goldenToken = GoldenTokenUUPS(goldenTokenAddress);
+        goldenToken.initialize(AggregatorV3Interface(goldAggregatorAddress), AggregatorV3Interface(ethAggregatorAddress), ILottery(address(lottery)), adminFeeCollector);
     }
 }

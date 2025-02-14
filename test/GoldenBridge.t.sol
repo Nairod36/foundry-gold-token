@@ -112,7 +112,7 @@ contract GoldenBridgeTest is Test {
         mockGoldToken.approve(address(goldenBridge), excessiveAmount);
 
         vm.prank(user);
-        vm.expectRevert("Solde GLD insuffisant");
+        vm.expectRevert("Insufficient GLD balance");
         goldenBridge.bridgeToBSC{value: FEE}(excessiveAmount, recipient);
     }
 
@@ -129,7 +129,7 @@ contract GoldenBridgeTest is Test {
         mockGoldToken.setApproveReturnValue(false);
 
         vm.prank(user);
-        vm.expectRevert("Approbation du token Gold echouee");
+        vm.expectRevert("Gold token approval failed");
         goldenBridge.bridgeToBSC{value: FEE}(amount, recipient);
 
         mockGoldToken.setApproveReturnValue(true);
@@ -163,7 +163,7 @@ contract GoldenBridgeTest is Test {
 
         // Envoyer moins d'ETH que requis.
         vm.prank(user);
-        vm.expectRevert("Solde ETH insuffisant pour les frais");
+        vm.expectRevert("Insufficient ETH balance for fees");
         goldenBridge.bridgeToBSC{value: requiredFee - 1}(amount, recipient);
     }
 
@@ -213,7 +213,7 @@ contract GoldenBridgeTest is Test {
             destTokenAmounts: new Client.EVMTokenAmount[](0)
         });
 
-        vm.expectRevert("Message non provenant de BSC");
+        vm.expectRevert("Message not from BSC");
         goldenBridge.testCcipReceive(message);
     }
 
@@ -233,7 +233,7 @@ contract GoldenBridgeTest is Test {
             destTokenAmounts: new Client.EVMTokenAmount[](0)
         });
 
-        vm.expectRevert("Transfert de token vers le destinataire echoue");
+        vm.expectRevert("Token transfer to recipient failed");
         goldenBridge.testCcipReceive(message);
 
         mockGoldToken.setTransferReturnValue(true);

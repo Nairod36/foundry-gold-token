@@ -9,15 +9,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title GoldBridgeBSC
- * @notice Contrat de pont sur Binance Smart Chain permettant de transférer des tokens Gold entre BSC et Ethereum.
- * @dev Implémente Chainlink CCIP pour la messagerie cross-chain sécurisée. Les frais sont payés en BNB (token natif).
+ * @notice Bridge contract on Binance Smart Chain for transferring Gold tokens between BSC and Ethereum.
+ * @dev Implements Chainlink CCIP for secure cross-chain messaging. Fees are paid in BNB (native token).
  */
 contract GoldBridgeBSC is CCIPReceiver, Ownable {
 
     IRouterClient public router;
     IERC20 public goldToken;
 
-    /// @notice Sélecteur de chaîne pour Ethereum (par exemple, 1)
+    /// @notice Chain selector for Ethereum (e.g., 1)
     uint64 public constant ETH_CHAIN_SELECTOR = 1;
     
     event BridgeSent(
@@ -36,9 +36,9 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     );
     
     /**
-     * @notice Initialise le contrat avec les adresses nécessaires.
-     * @param _router Adresse du routeur CCIP.
-     * @param _goldToken Adresse du token Gold (sur BSC).
+     * @notice Initializes the contract with the required addresses.
+     * @param _router Address of the CCIP router.
+     * @param _goldToken Address of the Gold token (on BSC).
      */
     constructor(
         address _router,
@@ -51,11 +51,11 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     }
     
     /**
-     * @notice Permet à un utilisateur de bridger ses tokens Gold de BSC vers Ethereum.
-     * @dev Les frais sont payés en BNB (via msg.value) et feeToken est address(0).
-     * @param amount Montant de tokens à envoyer.
-     * @param receiver Adresse du destinataire sur Ethereum.
-     * @return messageId Identifiant unique du message CCIP.
+     * @notice Allows a user to bridge their Gold tokens from BSC to Ethereum.
+     * @dev Fees are paid in BNB (via msg.value), and feeToken is set to address(0).
+     * @param amount Number of tokens to send.
+     * @param receiver Recipient address on Ethereum.
+     * @return messageId Unique identifier of the CCIP message.
      */
     function bridgeToEth(
         uint256 amount,
@@ -72,7 +72,7 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
             amount: amount
         });
         
-        // feeToken est address(0) pour indiquer que les frais sont payés en BNB.
+        // feeToken is set to address(0) to indicate that fees are paid in BNB.
         Client.EVM2AnyMessage memory evmMsg = Client.EVM2AnyMessage({
             receiver: abi.encode(receiver),
             data: abi.encode(amount),
@@ -93,9 +93,9 @@ contract GoldBridgeBSC is CCIPReceiver, Ownable {
     }
     
     /**
-     * @notice Gère la réception des messages CCIP (pour bridger des tokens depuis Ethereum vers BSC).
-     * @dev Transfère les tokens Gold au destinataire indiqué dans le message.
-     * @param any2EvmMessage Message CCIP reçu.
+     * @notice Handles the reception of CCIP messages (to bridge tokens from Ethereum to BSC).
+     * @dev Transfers Gold tokens to the recipient specified in the message.
+     * @param any2EvmMessage Received CCIP message.
      */
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage

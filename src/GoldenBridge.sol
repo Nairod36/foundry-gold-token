@@ -9,14 +9,14 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title GoldenBridge
- * @notice Contrat de pont (bridge) permettant de transférer des tokens Gold entre Ethereum et BSC
- * @dev Implémente Chainlink CCIP pour la messagerie cross-chain sécurisée
+ * @notice Bridge contract enabling the transfer of Gold tokens between Ethereum and BSC.
+ * @dev Implements Chainlink CCIP for secure cross-chain messaging.
  */
 contract GoldenBridge is CCIPReceiver, Ownable {
     IRouterClient public router;
     IERC20 public goldToken;
 
-    /// @notice Sélecteur de chaîne pour BSC (valeur constante fournie par Chainlink)
+    /// @notice Chain selector for BSC (constant value provided by Chainlink)
     uint64 public constant BSC_CHAIN_SELECTOR = 5009297550715157269;
     
     event BridgeSent(
@@ -35,9 +35,9 @@ contract GoldenBridge is CCIPReceiver, Ownable {
     );
 
     /**
-     * @notice Initialise le contrat avec les adresses nécessaires.
-     * @param _router Adresse du routeur CCIP.
-     * @param _goldToken Adresse du token Gold.
+     * @notice Initializes the contract with the required addresses.
+     * @param _router Address of the CCIP router.
+     * @param _goldToken Address of the Gold token.
      */
     constructor(
         address _router,
@@ -50,23 +50,23 @@ contract GoldenBridge is CCIPReceiver, Ownable {
     }
 
     /**
-     * @notice Envoie des tokens Gold vers BSC.
-     * @dev Les frais sont payés en ETH (via msg.value). Le champ feeToken est fixé à address(0).
-     * @param amount Montant de tokens à envoyer.
-     * @param receiver Adresse du destinataire sur BSC.
-     * @return messageId Identifiant unique du message CCIP.
+     * @notice Sends Gold tokens to BSC.
+     * @dev Fees are paid in ETH (via msg.value). The feeToken field is set to address(0).
+     * @param amount Number of tokens to send.
+     * @param receiver Recipient address on BSC.
+     * @return messageId Unique identifier of the CCIP message.
      */
     function bridgeToBSC(
         uint256 amount,
         address receiver
     ) external payable returns (bytes32 messageId) {
-        require(goldToken.balanceOf(msg.sender) >= amount, "Solde GLD insuffisant");
+        require(goldToken.balanceOf(msg.sender) >= amount, "Insufficient GLD balance");
 
-        // Transfère les tokens Gold de l'expéditeur vers ce contrat.
-        require(goldToken.transferFrom(msg.sender, address(this), amount), "Transfert de token Gold echoue");
+        // Transfers Gold tokens from the sender to this contract.
+        require(goldToken.transferFrom(msg.sender, address(this), amount), "Gold token transfer failed");
         
-        // Approuve le routeur pour dépenser les tokens Gold.
-        require(goldToken.approve(address(router), amount), "Approbation du token Gold echouee");
+        // Approves the router to spend the Gold tokens.
+        require(goldToken.approve(address(router), amount), "Gold token approval failed");
 
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({
@@ -74,7 +74,7 @@ contract GoldenBridge is CCIPReceiver, Ownable {
             amount: amount
         });
 
-        // Ici, feeToken est address(0), indiquant que les frais sont payés en ETH.
+        // Here, feeToken is address(0), indicating that fees are paid in ETH.
         Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
             receiver: abi.encode(receiver),
             data: abi.encode(amount),
@@ -89,9 +89,9 @@ contract GoldenBridge is CCIPReceiver, Ownable {
         });
 
         uint256 fees = router.getFee(BSC_CHAIN_SELECTOR, evm2AnyMessage);
-        require(msg.value >= fees, "Solde ETH insuffisant pour les frais");
+        require(msg.value >= fees, "Insufficient ETH balance for fees");
 
-        // Envoie le message CCIP en transférant les ETH de frais.
+        // Sends the CCIP message by transferring the ETH fees.
         messageId = router.ccipSend{value: fees}(BSC_CHAIN_SELECTOR, evm2AnyMessage);
 
         emit BridgeSent(messageId, BSC_CHAIN_SELECTOR, msg.sender, amount, fees);
@@ -99,16 +99,16 @@ contract GoldenBridge is CCIPReceiver, Ownable {
     }
 
     /**
-     * @notice Gère la réception des messages CCIP.
-     * @dev Fonction interne appelée par le routeur CCIP lors de la réception d'un message.
-     * @param any2EvmMessage Message reçu contenant les informations de transfert.
+     * @notice Handles the reception of CCIP messages.
+     * @dev Internal function called by the CCIP router upon message reception.
+     * @param any2EvmMessage Received message containing transfer information.
      */
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage
     ) internal override {
         require(
             any2EvmMessage.sourceChainSelector == BSC_CHAIN_SELECTOR,
-            "Message non provenant de BSC"
+            "Message not from BSC"
         );
 
         address sender = abi.decode(any2EvmMessage.sender, (address));
@@ -116,7 +116,7 @@ contract GoldenBridge is CCIPReceiver, Ownable {
 
         require(
             goldToken.transfer(sender, amount),
-            "Transfert de token vers le destinataire echoue"
+            "Token transfer to recipient failed"
         );
 
         emit BridgeReceived(any2EvmMessage.messageId, any2EvmMessage.sourceChainSelector, sender, amount);

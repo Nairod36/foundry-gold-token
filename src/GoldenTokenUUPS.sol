@@ -10,45 +10,51 @@ import "./interfaces/ILottery.sol";
 
 /**
  * @title GoldToken
- * @notice ERC20 dont la valeur est calquée sur le prix de l'or (1 token = 1 gramme d'or).
- * L'utilisateur peut minter des tokens en envoyant de l'ETH (conversion via Chainlink) et
- * brûler ses tokens pour obtenir de l'ETH selon le prix courant.
- * À chaque opération (mint et burn), un frais de 5% est appliqué :
- * - 50% des frais sont envoyés au contrat de loterie (utilisant Chainlink VRF)
- * - 50% à l'adresse de collecte des frais administratifs.
+ * @notice ERC20 token pegged to the price of gold (1 token = 1 gram of gold).
+ * Users can mint tokens by sending ETH (converted via Chainlink) and 
+ * burn tokens to receive ETH based on the current price.
+ * A 5% fee is applied to each operation (mint and burn):
+ * - 50% of the fees are sent to the lottery contract (using Chainlink VRF).
+ * - 50% to the administrative fee collection address.
  */
 contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
 
     // Chainlink price feeds
-    AggregatorV3Interface public goldFeed; // Feed XAU/USD
-    AggregatorV3Interface public ethFeed;  // Feed ETH/USD
+    AggregatorV3Interface public goldFeed; // XAU/USD price feed
+    AggregatorV3Interface public ethFeed;  // ETH/USD price feed
 
-    // Constantes de décimales
+    // Decimal constants
     uint256 public constant ETH_DECIMALS = 1e18;         
     uint256 public constant TOKEN_DECIMALS = 1e18;      
 
-    // Ratio de mint : 1 token par gramme d'or
+    // Mint ratio: 1 token per gram of gold
     uint256 public constant MINT_RATIO = 1;
 
-    // Pourcentage de frais appliqué aux opérations (5%)
+    // Fee percentage applied to operations (5%)
     uint256 public constant FEE_PERCENTAGE = 5;
 
-    // Adresse du contrat de loterie (50% des frais)
+    // Lottery contract address (50% of the fees)
     ILottery public lotteryContract;
-    // Adresse de collecte des frais (50% des frais)
+    // Administrative fee collection address (50% of the fees)
     address public adminFeeCollector;
 
-    // Événements
+    // Events
     event PriceFeedsUpdated(address indexed goldFeed, address indexed ethFeed);
     event Minted(address indexed minter, uint256 ethAmount, uint256 netTokenAmount);
     event Burned(address indexed burner, uint256 tokenAmount, uint256 refundEth);
 
+    /// The constructor must be disabled to use the UUPS pattern, which requires the initializer modifier.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
-     * @notice Initialisation du contrat (remplace le constructeur pour UUPS)
-     * @param _goldFeed Adresse du feed Chainlink pour l'or (XAU/USD)
-     * @param _ethFeed Adresse du feed Chainlink pour l'ETH (ETH/USD)
-     * @param _lottery Adresse du contrat de loterie
-     * @param _adminFeeCollector Adresse de collecte des frais administratifs
+     * @notice Initializes the contract (replaces the constructor for UUPS).
+     * @param _goldFeed Chainlink feed address for gold (XAU/USD).
+     * @param _ethFeed Chainlink feed address for ETH (ETH/USD).
+     * @param _lottery Address of the lottery contract.
+     * @param _adminFeeCollector Address for collecting administrative fees.
      */
     function initialize(
         AggregatorV3Interface _goldFeed,
@@ -73,12 +79,12 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Fonction obligatoire pour autoriser les mises à jour du contrat
+     * @notice Required function to authorize contract upgrades.
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
-     * @notice Permet de mettre à jour les feeds de prix (utile pour les tests)
+     * @notice Allows updating the price feeds (useful for testing).
      */
     function setPriceFeeds(
         AggregatorV3Interface _goldFeed,
@@ -92,7 +98,7 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Récupère le prix actuel de l'or depuis Chainlink (8 décimales)
+     * @notice Retrieves the current gold price from Chainlink (8 decimals).
      */
     function getGoldPrice() public view returns (uint256) {
         (, int256 answer, , , ) = goldFeed.latestRoundData();
@@ -101,7 +107,7 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Récupère le prix actuel de l'ETH depuis Chainlink (8 décimales)
+     * @notice Retrieves the current ETH price from Chainlink (8 decimals).
      */
     function getEthPrice() public view returns (uint256) {
         (, int256 answer, , , ) = ethFeed.latestRoundData();
@@ -110,9 +116,9 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Estime le nombre de tokens (avant frais) obtenus pour un montant d'ETH donné.
-     * @param ethAmount Montant d'ETH en wei utilisé pour le mint.
-     * @return tokenAmount Montant brut de tokens (18 décimales).
+     * @notice Estimates the number of tokens (before fees) obtained for a given ETH amount.
+     * @param ethAmount Amount of ETH in wei used for minting.
+     * @return tokenAmount Gross amount of tokens (18 decimals).
      */
     function previewMint(uint256 ethAmount) public view returns (uint256 tokenAmount) {
         uint256 ethPrice = getEthPrice();
@@ -122,11 +128,11 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Permet aux utilisateurs de minter des tokens en envoyant de l'ETH.
-     * Un frais de 5% est appliqué :
-     * - Le demandeur reçoit le montant net.
-     * - 50% des frais sont _mintés au contrat de loterie.
-     * - 50% des frais sont _mintés à l'adresse adminFeeCollector.
+     * @notice Allows users to mint tokens by sending ETH.
+     * A 5% fee is applied:
+     * - The requester receives the net amount.
+     * - 50% of the fees are minted to the lottery contract.
+     * - 50% of the fees are minted to the adminFeeCollector address.
      */
     function mint() public payable nonReentrant {
         require(msg.value > 0, "Must send ETH to mint tokens");
@@ -144,12 +150,12 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Permet aux utilisateurs de brûler leurs tokens pour recevoir de l'ETH.
-     * Un frais de 5% est prélevé :
-     * - Le montant net (après frais) est converti en ETH selon les prix actuels.
-     * - 50% des frais sont _mintés au contrat de loterie.
-     * - 50% des frais sont _mintés à l'adresse adminFeeCollector.
-     * @param tokenAmount Nombre total de tokens à brûler (frais inclus).
+     * @notice Allows users to burn their tokens to receive ETH.
+     * A 5% fee is deducted:
+     * - The net amount (after fees) is converted to ETH based on current prices.
+     * - 50% of the fees are minted to the lottery contract.
+     * - 50% of the fees are minted to the adminFeeCollector address.
+     * @param tokenAmount Total number of tokens to burn (including fees).
      */
     function burn(uint256 tokenAmount) external nonReentrant {
         require(tokenAmount > 0, "Token amount must be greater than 0");
@@ -174,7 +180,7 @@ contract GoldenTokenUUPS is ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuar
     }
 
     /**
-     * @notice Permet au contrat de recevoir de l'ETH (par exemple lors des opérations de mint).
+     * @notice Allows the contract to receive ETH (e.g., during minting operations).
      */
     receive() external payable {}
 }

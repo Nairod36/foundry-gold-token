@@ -150,7 +150,7 @@ contract LotteryPoolTest is Test {
     }
 
 
-    function testGetDepositorsEmpty() public {
+    function testGetDepositorsEmpty() view public {
         (address[] memory depositors, uint256[] memory amounts) = pool.getDepositors();
         assertEq(depositors.length, 0, "Expected no depositors");
         assertEq(amounts.length, 0, "Expected no amounts");
